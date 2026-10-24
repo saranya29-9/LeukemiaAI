@@ -4,6 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="leukemiaai-api-url" content="https://leukemiaai-api.onrender.com">
 
 <title>LeukemiaAI | Smart Blood Analysis</title>
 
@@ -782,8 +783,11 @@ input[type="file"] {
 
 // ---------------- BACKEND URL ----------------
 
-const API_URL =
-    "https://leukemiaai-api.onrender.com";
+const API_URL = (
+    window.LEUKEMIAAI_API_URL
+    || document.querySelector('meta[name="leukemiaai-api-url"]')?.content
+    || "https://leukemiaai-api.onrender.com"
+).replace(/\/+$/, "");
 
 const apiStatus = document.getElementById("apiStatus");
 const apiStatusText = document.getElementById("apiStatusText");
@@ -1208,7 +1212,9 @@ async function sendMessage() {
             throw new Error("The chatbot returned an empty answer.");
         }
 
-        thinkingMessage.textContent = data.answer;
+        thinkingMessage.textContent = data.mode === "educational_fallback"
+            ? `Offline educational information — not AI-generated\n\n${data.answer}`
+            : data.answer;
         thinkingMessage.removeAttribute("aria-busy");
 
         conversationHistory.push(

@@ -49,14 +49,17 @@ class BackendApiTests(unittest.TestCase):
         self.assertFalse(response.json()["model_available"])
         self.assertEqual(response.json()["error"], "model file is missing")
 
-    def test_backend_class_order_matches_sorted_training_directories(self):
-        training_classes = sorted(
-            path.name
-            for path in (backend.PROJECT_DIR / "data" / "sample_200").iterdir()
-            if path.is_dir()
+    def test_backend_preserves_trained_class_order(self):
+        self.assertEqual(
+            backend.CLASS_NAMES,
+            [
+                "Acute Lymphoblastic Leukemia",
+                "Acute Myeloid Leukemia",
+                "Chronic Lymphocytic Leukemia",
+                "Chronic Myeloid Leukemia",
+                "Normal & Reactive",
+            ],
         )
-
-        self.assertEqual(backend.CLASS_NAMES, training_classes)
 
     def test_prediction_uses_trained_class_order_and_real_model_output(self):
         cases = [
@@ -110,11 +113,56 @@ class BackendApiTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 422)
 
-    def test_chat_requires_api_key(self):
+    def test_chat_uses_transparent_fallback_without_api_key(self):
         with patch.dict(os.environ, {"OPENAI_API_KEY": ""}):
             response = self.client.post(
                 "/chat",
                 json={"message": "What are leukemia symptoms?", "history": []},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["mode"], "educational_fallback")
+        self.assertIn("cannot confirm", response.json()["answer"])
+
+    def test_chat_fallback_covers_model_and_project_topics(self):
+        with patch.dict(os.environ, {"OPENAI_API_KEY": ""}):
+            cnn_response = self.client.post(
+                "/chat",
+                json={"message": "Explain CNN-LSTM in simple words.", "history": []},
+            )
+            project_response = self.client.post(
+                "/chat",
+                json={"message": "How does my project analyze a blood smear image?", "history": []},
+            )
+
+        self.assertEqual(cnn_response.status_code, 200)
+        self.assertEqual(cnn_response.json()["mode"], "educational_fallback")
+        self.assertIn("LSTM", cnn_response.json()["answer"])
+        self.assertEqual(project_response.status_code, 200)
+        self.assertIn("128 × 128", project_response.json()["answer"])
+
+    def test_chat_fallback_uses_last_user_turn_for_followup(self):
+        with patch.dict(os.environ, {"OPENAI_API_KEY": ""}):
+            response = self.client.post(
+                "/chat",
+                json={
+                    "message": "Can you explain those more?",
+                    "history": [
+                        {"role": "user", "content": "What are common leukemia symptoms?"},
+                        {"role": "assistant", "content": "Symptoms can vary."},
+                    ],
+                },
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["mode"], "educational_fallback")
+        self.assertIn("fatigue", response.json()["answer"])
+
+    def test_chat_reports_unsupported_question_without_api_key(self):
+        with patch.dict(os.environ, {"OPENAI_API_KEY": ""}):
+            response = self.client.post(
+                "/chat",
+                json={"message": "Tell me about a topic outside the fallback.", "history": []},
             )
 
         self.assertEqual(response.status_code, 503)
@@ -156,7 +204,7 @@ class BackendApiTests(unittest.TestCase):
         self.assertEqual(kwargs["messages"][-2]["content"], history[1]["content"])
         self.assertEqual(kwargs["messages"][-1]["content"], "Explain that in simpler words.")
 
-    def test_chat_provider_failure_is_reported_without_fabricated_response(self):
+    def test_chat_provider_failure_uses_fallback_only_for_supported_topic(self):
         with (
             patch.dict(os.environ, {"OPENAI_API_KEY": "test-only-key"}),
             patch.object(
@@ -169,13 +217,18 @@ class BackendApiTests(unittest.TestCase):
                 "/chat",
                 json={"message": "What are leukemia symptoms?", "history": []},
             )
+            supported_response = self.client.post(
+                "/chat",
+                json={"message": "What are symptoms?", "history": []},
+            )
             unknown_response = self.client.post(
                 "/chat",
                 json={"message": "A question outside the fallback FAQ", "history": []},
             )
 
-        self.assertEqual(response.status_code, 502)
-        self.assertIn("temporarily unavailable", response.json()["detail"])
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["mode"], "educational_fallback")
+        self.assertEqual(supported_response.status_code, 200)
         self.assertEqual(unknown_response.status_code, 502)
 
     def test_chat_provider_timeout_returns_clear_gateway_timeout(self):
@@ -186,11 +239,22 @@ class BackendApiTests(unittest.TestCase):
         ):
             response = self.client.post(
                 "/chat",
-                json={"message": "Explain CNN-LSTM simply.", "history": []},
+                json={"message": "Explain quantum computing simply.", "history": []},
             )
 
         self.assertEqual(response.status_code, 504)
         self.assertIn("timed out", response.json()["detail"])
+
+    def test_required_fastapi_routes_are_registered(self):
+        routes = {
+            (route.path, method)
+            for route in backend.app.routes
+            for method in getattr(route, "methods", set())
+        }
+
+        for route in (("/", "GET"), ("/health", "GET"), ("/predict", "POST"), ("/chat", "POST")):
+            with self.subTest(route=route):
+                self.assertIn(route, routes)
 
     def test_cors_allows_deployed_frontend(self):
         response = self.client.options(
@@ -217,8 +281,13 @@ class BackendApiTests(unittest.TestCase):
             frontend.index("// ---------------- CHATBOT ----------------")
         ]
 
-        self.assertEqual(frontend.count("https://leukemiaai-api.onrender.com"), 1)
+        self.assertEqual(frontend.count("https://leukemiaai-api.onrender.com"), 2)
         self.assertIn('onclick="predictImage()"', frontend)
+        self.assertIn(
+            '<meta name="leukemiaai-api-url" content="https://leukemiaai-api.onrender.com">',
+            frontend,
+        )
+        self.assertIn("window.LEUKEMIAAI_API_URL", frontend)
         self.assertIn("async function predictImage()", frontend)
         self.assertIn("`${API_URL}/predict`", frontend)
         self.assertIn('formData.append("file", file)', frontend)
