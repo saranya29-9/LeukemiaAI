@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: leukemiaai-api
+    runtime: python
+    rootDir: .
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn backend.app:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-4o-mini
+      - key: FRONTEND_ORIGINS
+        value: https://leukemiaai-frontend-git-main-saranyadunnapothula-5686.vercel.app

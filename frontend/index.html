@@ -2,1089 +2,1388 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Leukemia Detection | AI Dashboard</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: "Segoe UI", Arial, sans-serif;
-        }
+<title>LeukemiaAI | Smart Blood Analysis</title>
 
-        body {
-            background: #f4f7fb;
-            color: #263247;
-        }
+<style>
+:root {
+    --primary: #635bdb;
+    --primary-dark: #4c43c4;
+    --bg: #f5f6fc;
+    --card: #ffffff;
+    --text: #24243b;
+    --muted: #777990;
+    --border: #e8e8f1;
+    --green: #159765;
+    --red: #d94b5b;
+}
 
-        .app {
-            display: flex;
-            min-height: 100vh;
-        }
+* {
+    box-sizing: border-box;
+}
 
-        /* Sidebar */
-        .sidebar {
-            width: 245px;
-            background: #172b4d;
-            color: white;
-            padding: 28px 18px;
-            flex-shrink: 0;
-        }
+body {
+    margin: 0;
+    font-family: Inter, "Segoe UI", Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+}
 
-        .brand {
-            font-size: 21px;
-            font-weight: 700;
-            margin-bottom: 8px;
-        }
+button, textarea, input {
+    font: inherit;
+}
 
-        .brand span {
-            color: #67e8d4;
-        }
+button {
+    cursor: pointer;
+    border: none;
+}
 
-        .brand-subtitle {
-            color: #b9c8df;
-            font-size: 12px;
-            margin-bottom: 38px;
-        }
+.topbar {
+    background: white;
+    border-bottom: 1px solid var(--border);
+    padding: 18px 5%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px;
+}
 
-        .menu-label {
-            color: #91a5c5;
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            margin: 20px 10px 12px;
-        }
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
 
-        .nav-item {
-            display: block;
-            text-decoration: none;
-            color: #d8e2f2;
-            padding: 13px 14px;
-            border-radius: 9px;
-            margin-bottom: 7px;
-            font-size: 14px;
-            cursor: pointer;
-        }
+.brand-icon {
+    width: 45px;
+    height: 45px;
+    border-radius: 13px;
+    background: linear-gradient(135deg, #8178f4, #5146c8);
+    color: white;
+    display: grid;
+    place-items: center;
+    font-size: 23px;
+    font-weight: bold;
+}
 
-        .nav-item.active,
-        .nav-item:hover {
-            background: #29466f;
-            color: white;
-        }
+.brand h1 {
+    margin: 0;
+    font-size: 22px;
+}
 
-        .sidebar-note {
-            margin-top: 50px;
-            padding: 14px;
-            background: #213b61;
-            border-radius: 12px;
-            font-size: 12px;
-            line-height: 1.6;
-            color: #c9d7eb;
-        }
+.brand p {
+    margin: 4px 0 0;
+    color: var(--muted);
+    font-size: 12px;
+}
 
-        /* Main content */
-        .main {
-            flex: 1;
-            min-width: 0;
-            padding: 30px;
-        }
+.status {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    color: var(--green);
+    font-size: 13px;
+    font-weight: 600;
+}
 
-        .topbar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 15px;
-            margin-bottom: 28px;
-        }
+.status-error {
+    color: var(--red);
+}
 
-        .topbar h1 {
-            font-size: 27px;
-            color: #172b4d;
-        }
+.status-dot {
+    width: 8px;
+    height: 8px;
+    background: var(--green);
+    border-radius: 50%;
+}
 
-        .topbar p {
-            color: #78869b;
-            font-size: 14px;
-            margin-top: 6px;
-        }
+.status-error .status-dot {
+    background: var(--red);
+}
 
-        .status {
-            background: #e1f8ef;
-            color: #16865c;
-            padding: 9px 14px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-            white-space: nowrap;
-        }
+.container {
+    width: min(1150px, 92%);
+    margin: 35px auto;
+}
 
-        /* Summary cards */
-        .stats {
-            display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 18px;
-            margin-bottom: 25px;
-        }
+.hero {
+    margin-bottom: 28px;
+}
 
-        .stat-card {
-            background: white;
-            padding: 22px;
-            border-radius: 14px;
-            border: 1px solid #e8edf4;
-        }
+.hero h2 {
+    font-size: 30px;
+    margin: 0 0 10px;
+}
 
-        .stat-card p {
-            color: #7b899d;
-            font-size: 13px;
-            margin-bottom: 12px;
-        }
+.hero p {
+    color: var(--muted);
+    line-height: 1.6;
+    margin: 0;
+}
 
-        .stat-card h2 {
-            color: #172b4d;
-            font-size: 25px;
-        }
+.layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    align-items: stretch;
+}
 
-        .stat-card small {
-            color: #8794a8;
-            font-size: 12px;
-        }
+.card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 25px;
+    box-shadow: 0 5px 25px #28234a08;
+    min-width: 0;
+}
 
-        /* Panels */
-        .content-grid {
-            display: grid;
-            grid-template-columns: 1.1fr 0.9fr;
-            gap: 22px;
-        }
+.card-heading {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 22px;
+}
 
-        .panel {
-            background: white;
-            border: 1px solid #e8edf4;
-            border-radius: 15px;
-            padding: 24px;
-            min-width: 0;
-        }
+.card-icon {
+    width: 42px;
+    height: 42px;
+    background: #efedff;
+    color: var(--primary);
+    border-radius: 12px;
+    display: grid;
+    place-items: center;
+    font-size: 20px;
+}
 
-        .panel h3 {
-            color: #172b4d;
-            font-size: 18px;
-            margin-bottom: 8px;
-        }
+.card-heading h3 {
+    margin: 0;
+    font-size: 19px;
+}
 
-        .panel-description {
-            color: #8491a5;
-            font-size: 13px;
-            line-height: 1.6;
-            margin-bottom: 20px;
-        }
+.card-heading p {
+    margin: 5px 0 0;
+    color: var(--muted);
+    font-size: 13px;
+}
 
-        /* Upload */
-        .upload-box {
-            border: 2px dashed #b9c9df;
-            background: #f8fbff;
-            border-radius: 13px;
-            padding: 28px 18px;
-            text-align: center;
-            cursor: pointer;
-            transition: 0.2s;
-        }
+.upload-box {
+    border: 2px dashed #d4d1f5;
+    border-radius: 15px;
+    background: #faf9ff;
+    padding: 25px 15px;
+    text-align: center;
+    transition: 0.2s;
+}
 
-        .upload-box:hover {
-            border-color: #319caa;
-            background: #f0fbfb;
-        }
+.upload-box:hover {
+    border-color: var(--primary);
+}
 
-        .upload-icon {
-            font-size: 38px;
-            margin-bottom: 12px;
-        }
+.upload-icon {
+    font-size: 36px;
+    margin-bottom: 10px;
+}
 
-        .upload-box h4 {
-            color: #314765;
-            font-size: 15px;
-            margin-bottom: 8px;
-        }
+.upload-box h4 {
+    margin: 8px 0;
+}
 
-        .upload-box p {
-            color: #8a98aa;
-            font-size: 12px;
-        }
+.upload-box p {
+    color: var(--muted);
+    font-size: 13px;
+}
 
-        #imageInput {
-            display: none;
-        }
+input[type="file"] {
+    display: block;
+    width: 100%;
+    margin-top: 18px;
+    font-size: 13px;
+}
 
-        #preview {
-            display: none;
-            max-width: 100%;
-            max-height: 260px;
-            object-fit: contain;
-            margin: 20px auto 0;
-            border-radius: 10px;
-        }
+.preview {
+    display: none;
+    margin-top: 18px;
+    text-align: center;
+}
 
-        .file-name {
-            color: #61738d;
-            font-size: 12px;
-            margin-top: 12px;
-            word-break: break-word;
-        }
+.preview img {
+    max-width: 100%;
+    max-height: 230px;
+    object-fit: contain;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+}
 
-        .primary-btn {
-            width: 100%;
-            border: none;
-            border-radius: 9px;
-            padding: 14px;
-            margin-top: 18px;
-            background: #168c9b;
-            color: white;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-        }
+.primary-btn {
+    width: 100%;
+    margin-top: 18px;
+    padding: 14px;
+    border-radius: 11px;
+    background: var(--primary);
+    color: white;
+    font-weight: 600;
+    transition: 0.2s;
+}
 
-        .primary-btn:hover {
-            background: #117786;
-        }
+.primary-btn:hover {
+    background: var(--primary-dark);
+}
 
-        .primary-btn:disabled {
-            background: #a8b8c5;
-            cursor: not-allowed;
-        }
+.primary-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
 
-        /* Results */
-        .result-empty {
-            background: #f7f9fc;
-            border-radius: 12px;
-            padding: 28px 18px;
-            text-align: center;
-            color: #8a98aa;
-            font-size: 13px;
-            line-height: 1.7;
-        }
+.result-box {
+    margin-top: 20px;
+    padding: 18px;
+    border-radius: 13px;
+    background: #f7f7fc;
+    display: none;
+    overflow-wrap: anywhere;
+}
 
-        .result-icon {
-            font-size: 34px;
-            margin-bottom: 10px;
-        }
+.result-box h4 {
+    margin: 0 0 10px;
+}
 
-        .result-content {
-            display: none;
-        }
+.result-normal {
+    color: var(--green);
+}
 
-        .result-label {
-            color: #8491a5;
-            font-size: 12px;
-            margin-bottom: 8px;
-        }
+.result-leukemia {
+    color: var(--red);
+}
 
-        .prediction {
-            color: #172b4d;
-            font-size: 22px;
-            font-weight: 700;
-            line-height: 1.4;
-            margin-bottom: 20px;
-        }
+.probability-row {
+    margin: 13px 0;
+    font-size: 13px;
+}
 
-        .confidence-row {
-            display: flex;
-            justify-content: space-between;
-            color: #64748b;
-            font-size: 13px;
-            margin-bottom: 9px;
-        }
+.probability-label {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 6px;
+}
 
-        .progress {
-            height: 9px;
-            background: #e8edf4;
-            border-radius: 10px;
-            overflow: hidden;
-        }
+.progress {
+    height: 7px;
+    background: #e7e7f1;
+    border-radius: 20px;
+    overflow: hidden;
+}
 
-        .progress-bar {
-            width: 0%;
-            height: 100%;
-            background: #168c9b;
-            border-radius: 10px;
-            transition: width 0.4s;
-        }
+.progress-bar {
+    height: 100%;
+    background: var(--primary);
+    border-radius: 20px;
+}
 
-        .result-warning {
-            background: #fff7e6;
-            color: #8a651c;
-            padding: 13px;
-            border-radius: 9px;
-            font-size: 12px;
-            line-height: 1.6;
-            margin-top: 22px;
-        }
+.chat-card {
+    display: flex;
+    flex-direction: column;
+}
 
-        .error-message {
-            display: none;
-            color: #b42318;
-            background: #fff0ee;
-            padding: 12px;
-            border-radius: 8px;
-            font-size: 13px;
-            margin-top: 14px;
-        }
+.history-card {
+    margin-top: 24px;
+}
 
-        .footer {
-            margin-top: 25px;
-            text-align: center;
-            color: #98a4b5;
-            font-size: 12px;
-        }
+.history-summary {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    margin-bottom: 22px;
+}
 
-        /* History table */
-        .history-table {
-            width: 100%;
-            border-collapse: collapse;
-            text-align: left;
-            font-size: 13px;
-        }
+.history-stat {
+    padding: 15px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: #fafaff;
+}
 
-        .history-table th,
-        .history-table td {
-            padding: 10px;
-            border-bottom: 1px solid #e8edf4;
-        }
+.history-stat span {
+    display: block;
+    color: var(--muted);
+    font-size: 12px;
+}
 
-        .history-table th {
-            color: #64748b;
-        }
+.history-stat strong {
+    display: block;
+    margin-top: 6px;
+    overflow-wrap: anywhere;
+}
 
-        .clear-btn {
-            margin-top: 15px;
-            padding: 10px 16px;
-            background: #172b4d;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-        }
+.history-table-wrap {
+    overflow-x: auto;
+}
 
-        /* Responsive */
-        @media (max-width: 1000px) {
-            .sidebar {
-                width: 200px;
-            }
+.clear-history-btn {
+    margin: 0 0 14px;
+    padding: 9px 12px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: white;
+    color: var(--muted);
+}
 
-            .content-grid {
-                grid-template-columns: 1fr;
-            }
-        }
+.history-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    text-align: left;
+}
 
-        @media (max-width: 700px) {
-            .app {
-                display: block;
-            }
+.history-table th,
+.history-table td {
+    padding: 11px 9px;
+    border-bottom: 1px solid var(--border);
+}
 
-            .sidebar {
-                width: 100%;
-                padding: 18px;
-            }
+.history-table th {
+    color: var(--muted);
+    font-weight: 600;
+}
 
-            .brand-subtitle,
-            .menu-label,
-            .sidebar-note {
-                display: none;
-            }
+.distribution-row {
+    margin: 12px 0;
+    font-size: 13px;
+}
 
-            .sidebar nav {
-                display: flex;
-                gap: 8px;
-                overflow-x: auto;
-                margin-top: 15px;
-            }
+.distribution-label {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 6px;
+}
 
-            .nav-item {
-                white-space: nowrap;
-                margin: 0;
-            }
+.chat-window {
+    height: 340px;
+    overflow-y: auto;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 13px;
+    background: #fafaff;
+}
 
-            .main {
-                padding: 18px;
-            }
+.chat-message {
+    max-width: 90%;
+    padding: 12px 14px;
+    margin: 9px 0;
+    border-radius: 13px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    line-height: 1.55;
+    font-size: 14px;
+}
 
-            .stats {
-                grid-template-columns: 1fr;
-            }
+.chat-message[aria-busy="true"]::after {
+    content: " ...";
+    animation: thinking 1s steps(3, end) infinite;
+}
 
-            .topbar {
-                align-items: flex-start;
-                flex-direction: column;
-            }
-        }
-    </style>
+@keyframes thinking {
+    0%, 20% { content: " ."; }
+    40%, 60% { content: " .."; }
+    80%, 100% { content: " ..."; }
+}
+
+.bot-message {
+    background: #efedff;
+    color: #34315b;
+    border-bottom-left-radius: 4px;
+}
+
+.user-message {
+    background: var(--primary);
+    color: white;
+    margin-left: auto;
+    border-bottom-right-radius: 4px;
+}
+
+.chat-form {
+    display: flex;
+    gap: 10px;
+    margin-top: 14px;
+}
+
+.chat-form textarea {
+    flex: 1;
+    min-width: 0;
+    min-height: 48px;
+    max-height: 120px;
+    resize: vertical;
+    padding: 13px;
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    outline: none;
+}
+
+.chat-form textarea:focus {
+    border-color: var(--primary);
+}
+
+.send-btn {
+    background: var(--primary);
+    color: white;
+    padding: 0 20px;
+    border-radius: 11px;
+    font-weight: 600;
+}
+
+.send-btn:disabled {
+    opacity: 0.5;
+}
+
+.chat-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 8px;
+}
+
+.clear-chat-btn {
+    padding: 7px 10px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: white;
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.clear-chat-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.suggestions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+}
+
+.suggestion {
+    background: #f1f0ff;
+    color: #5149b7;
+    border: 1px solid #e4e1ff;
+    border-radius: 20px;
+    padding: 8px 11px;
+    font-size: 12px;
+}
+
+.disclaimer {
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.6;
+    margin-top: 15px;
+}
+
+.footer {
+    text-align: center;
+    color: var(--muted);
+    font-size: 12px;
+    padding: 25px 10px;
+}
+
+@media (max-width: 800px) {
+    .layout {
+        grid-template-columns: 1fr;
+    }
+
+    .hero h2 {
+        font-size: 25px;
+    }
+
+    .topbar {
+        padding: 15px 4%;
+    }
+
+    .container {
+        margin: 25px auto;
+    }
+
+    .history-summary {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
 </head>
 
 <body>
 
-<div class="app">
+<header class="topbar">
 
-    <!-- Sidebar -->
-    <aside class="sidebar">
-        <div class="brand">Leukemia<span>AI</span></div>
-        <div class="brand-subtitle">Blood Smear Analysis Platform</div>
+    <div class="brand">
+        <div class="brand-icon">L</div>
 
-        <div class="menu-label">Main Menu</div>
-
-        <nav>
-            <a class="nav-item active" href="#">▦ Dashboard</a>
-            <a class="nav-item" href="#uploadPanel">＋ Image Analysis</a>
-            <a class="nav-item" href="#resultPanel">◈ Results</a>
-            <a class="nav-item" href="#chatbotPanel">✦ AI Chatbot</a>
-        </nav>
-
-        <div class="sidebar-note">
-            <strong>About this project</strong>
-            <br><br>
-            An experimental CNN-based system for classifying peripheral
-            blood smear images.
+        <div>
+            <h1>LeukemiaAI</h1>
+            <p>AI Blood Analysis & Health Education</p>
         </div>
-    </aside>
+    </div>
 
-    <!-- Main dashboard -->
-    <main class="main">
+    <div class="status" id="apiStatus" role="status" aria-live="polite">
+        <span class="status-dot"></span>
+        <span id="apiStatusText">Checking backend...</span>
+    </div>
 
-        <header class="topbar">
-            <div>
-                <h1>Leukemia Detection Dashboard</h1>
-                <p>AI-assisted peripheral blood smear image classification</p>
+</header>
+
+
+<main class="container">
+
+    <section class="hero">
+        <h2>Welcome to LeukemiaAI</h2>
+
+        <p>
+            Explore AI-based blood smear predictions and
+            learn about leukemia through an educational chatbot.
+        </p>
+    </section>
+
+
+    <div class="layout">
+
+        <!-- PREDICTION CARD -->
+
+        <section class="card">
+
+            <div class="card-heading">
+
+                <div class="card-icon">🔬</div>
+
+                <div>
+                    <h3>Leukemia Detection</h3>
+                    <p>Upload a peripheral blood smear image</p>
+                    <p id="modelTypeText">Model Type: checking backend...</p>
+                </div>
+
             </div>
 
-            <div class="status">● Backend Connected</div>
-        </header>
 
-        <!-- Summary cards -->
-        <section class="stats">
-            <div class="stat-card">
-                <p>Model Classes</p>
-                <h2>05</h2>
-                <small>Four leukemia classes + Normal</small>
-            </div>
+            <div class="upload-box">
 
-            <div class="stat-card">
-                <p>Input Image Size</p>
-                <h2>128 × 128</h2>
-                <small>RGB image</small>
-            </div>
+                <div class="upload-icon">🩸</div>
 
-            <div class="stat-card">
-                <p>Model Type</p>
-                <h2>CNN</h2>
-                <small>Experimental image classifier</small>
-            </div>
-        </section>
+                <h4>Upload Blood Smear Image</h4>
 
-        <!-- Upload and result panels -->
-        <section class="content-grid">
-
-            <div class="panel" id="uploadPanel">
-                <h3>Upload Blood Smear Image</h3>
-
-                <p class="panel-description">
-                    Select a JPG or PNG peripheral blood smear image
-                    for experimental classification.
+                <p>
+                    Select an image from your device.
+                    Use a microscope blood smear image.
+                    JPG and PNG are supported; other photos are not validated as smears.
                 </p>
-
-                <div class="upload-box" id="uploadBox">
-                    <div class="upload-icon">🩸</div>
-                    <h4>Click to upload an image</h4>
-                    <p>Supported formats: JPG, JPEG, PNG</p>
-
-                    <input
-                        type="file"
-                        id="imageInput"
-                        accept="image/jpeg,image/png"
-                    >
-
-                    <img id="preview" alt="Uploaded blood smear preview">
-
-                    <div class="file-name" id="fileName"></div>
-                </div>
-
-                <button class="primary-btn" id="analyzeBtn" disabled>
-                    Analyze Image
-                </button>
-
-                <div class="error-message" id="errorMessage"></div>
-            </div>
-
-            <div class="panel" id="resultPanel">
-                <h3>Prediction Result</h3>
-
-                <p class="panel-description">
-                    The model's experimental output will appear here.
-                </p>
-
-                <div class="result-empty" id="emptyResult">
-                    <div class="result-icon">🔬</div>
-                    Upload an image and click Analyze Image
-                    to view the prediction.
-                </div>
-
-                <div class="result-content" id="resultContent">
-                    <div class="result-label">Predicted Class</div>
-
-                    <div class="prediction" id="predictionText">-</div>
-
-                    <div class="confidence-row">
-                        <span>Model confidence</span>
-                        <strong id="confidenceText">0%</strong>
-                    </div>
-
-                    <div class="progress">
-                        <div class="progress-bar" id="confidenceBar"></div>
-                    </div>
-
-                    <div class="result-warning">
-                        This is an experimental model prediction, not a
-                        medical diagnosis. Consult a qualified medical
-                        professional for clinical interpretation.
-                    </div>
-                </div>
-            </div>
-
-        </section>
-
-        <!-- Prediction History -->
-        <section class="panel" id="historyPanel" style="margin-top:22px;">
-            <h3>Prediction History</h3>
-
-            <p class="panel-description">
-                View the images analyzed during this dashboard session.
-            </p>
-
-            <div style="overflow-x:auto;">
-                <table class="history-table" id="historyTable">
-                    <thead>
-                        <tr>
-                            <th>Image</th>
-                            <th>Predicted Class</th>
-                            <th>Confidence</th>
-                            <th>Date &amp; Time</th>
-                        </tr>
-                    </thead>
-
-                    <tbody id="historyBody">
-                        <tr>
-                            <td colspan="4">No predictions yet.</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <button type="button" class="clear-btn" id="clearHistoryBtn">
-                Clear History
-            </button>
-        </section>
-
-        <!-- Visual Analytics -->
-        <section class="panel" id="analyticsPanel" style="margin-top:22px;">
-            <h3>📊 Prediction Analytics</h3>
-
-            <p class="panel-description">
-                Summary of the predictions made during this dashboard session.
-            </p>
-
-            <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:15px; margin-bottom:20px;">
-
-                <div style="background:#f4f7fb; padding:18px; border-radius:10px;">
-                    <p style="font-size:13px; color:#8491a5;">
-                        Total Images Analyzed
-                    </p>
-
-                    <h2 id="totalAnalyzed" style="margin-top:8px; color:#172b4d;">
-                        0
-                    </h2>
-                </div>
-
-                <div style="background:#f4f7fb; padding:18px; border-radius:10px;">
-                    <p style="font-size:13px; color:#8491a5;">
-                        Most Predicted Class
-                    </p>
-
-                    <h2 id="mostPredictedClass"
-                        style="margin-top:8px; color:#172b4d; font-size:18px;">
-                        -
-                    </h2>
-                </div>
-            </div>
-
-            <h4 style="color:#172b4d; margin-bottom:12px;">
-                Class Distribution
-            </h4>
-
-            <div id="classDistribution">
-                <p style="color:#8491a5; font-size:13px;">
-                    Analyze an image to view class statistics.
-                </p>
-            </div>
-        </section>
-
-        <!-- Educational Chatbot -->
-        <section class="panel" id="chatbotPanel" style="margin-top:22px;">
-            <h3>✦ LeukemiaAI Educational Assistant</h3>
-
-            <p class="panel-description">
-                Ask questions about leukemia types, the CNN model,
-                or this project's workflow.
-            </p>
-
-            <div id="chatMessages"
-                 style="height:260px; overflow-y:auto; background:#f7f9fc;
-                        padding:15px; border-radius:10px; margin-bottom:15px;">
-
-                <div style="background:#e1f8ef; padding:12px;
-                            border-radius:10px; margin-bottom:10px;">
-                    Hi! 👋 I'm LeukemiaAI Assistant.
-                    Ask me about leukemia classes or your project.
-                </div>
-            </div>
-
-            <form id="chatForm"
-                  style="display:flex; gap:10px; flex-wrap:wrap;">
 
                 <input
-                    type="text"
-                    id="chatInput"
-                    placeholder="Ask a question..."
-                    required
-                    style="flex:1; min-width:180px; padding:12px;
-                           border:1px solid #d5deea; border-radius:8px;"
-                >
+                    type="file"
+                    id="imageInput"
+                    accept="image/png,image/jpeg,image/jpg"
+                />
 
-                <button
-                    type="submit"
-                    style="padding:12px 20px; background:#168c9b;
-                           color:white; border:none; border-radius:8px;
-                           cursor:pointer;">
-                    Send
-                </button>
-            </form>
+            </div>
 
-            <p style="font-size:11px; color:#8491a5; margin-top:12px;">
-                Educational use only. This assistant does not provide
-                medical diagnosis or treatment advice.
+
+            <div class="preview" id="preview">
+                <img id="previewImage" alt="Image preview">
+                <p id="fileName"></p>
+            </div>
+
+
+            <button
+                class="primary-btn"
+                id="predictButton"
+                onclick="predictImage()"
+                disabled
+            >
+                Analyze Image
+            </button>
+
+
+            <div
+                class="result-box"
+                id="resultBox"
+            ></div>
+
+
+            <p class="disclaimer">
+                This AI prediction is for academic and
+                educational purposes only. It is not a
+                medical diagnosis. The model has no
+                non-smear image class, so unrelated photos
+                may still be assigned one of its five classes.
             </p>
+
         </section>
 
-        <div class="footer">
-            Leukemia Detection Project · Educational and research use only
+
+        <!-- CHATBOT CARD -->
+
+        <section class="card chat-card">
+
+            <div class="card-heading">
+
+                <div class="card-icon">💬</div>
+
+                <div>
+                    <h3>LeukemiaAI Assistant</h3>
+                    <p>Ask questions about leukemia</p>
+                </div>
+
+            </div>
+
+
+            <div
+                class="chat-window"
+                id="chatWindow"
+                aria-live="polite"
+                aria-label="Chat messages"
+            >
+
+                <div class="chat-message bot-message">
+                    Hi! I'm LeukemiaAI Assistant.
+
+                    You can ask me about leukemia symptoms,
+                    types, tests, treatment approaches,
+                    and general awareness.
+                </div>
+
+            </div>
+
+
+            <div class="suggestions">
+
+                <button
+                    class="suggestion"
+                    onclick="askSuggestion('What are the symptoms of leukemia?')"
+                >
+                    Symptoms
+                </button>
+
+                <button
+                    class="suggestion"
+                    onclick="askSuggestion('Explain the types of leukemia.')"
+                >
+                    Types
+                </button>
+
+                <button
+                    class="suggestion"
+                    onclick="askSuggestion('What tests are used to detect leukemia?')"
+                >
+                    Tests
+                </button>
+
+                <button
+                    class="suggestion"
+                    onclick="askSuggestion('Explain leukemia treatment approaches.')"
+                >
+                    Treatment
+                </button>
+
+            </div>
+
+
+            <form
+                class="chat-form"
+                id="chatForm"
+            >
+
+                <textarea
+                    id="chatInput"
+                    placeholder="Ask your question..."
+                    rows="1"
+                    maxlength="4000"
+                ></textarea>
+
+                <button
+                    class="send-btn"
+                    id="sendButton"
+                    type="submit"
+                >
+                    Send
+                </button>
+
+            </form>
+
+            <div class="chat-actions">
+                <button class="clear-chat-btn" id="clearChatButton" type="button">
+                    Clear conversation
+                </button>
+            </div>
+
+
+            <p class="disclaimer">
+                Educational information only.
+                The chatbot cannot diagnose or replace
+                a qualified medical professional.
+            </p>
+
+        </section>
+
+    </div>
+
+    <section class="card history-card">
+        <div class="card-heading">
+            <div class="card-icon">📊</div>
+            <div>
+                <h3>Session Prediction History</h3>
+                <p>Predictions from this browser session only</p>
+            </div>
         </div>
 
-    </main>
-</div>
+        <div class="history-summary">
+            <div class="history-stat">
+                <span>Total images analyzed</span>
+                <strong id="totalAnalyzed">0</strong>
+            </div>
+            <div class="history-stat">
+                <span>Most predicted class</span>
+                <strong id="mostPredictedClass">—</strong>
+            </div>
+        </div>
+
+        <h4>Class distribution</h4>
+        <div id="classDistribution">
+            <p class="disclaimer">Analyze an image to see class statistics.</p>
+        </div>
+
+        <button class="clear-history-btn" id="clearHistoryButton" type="button">
+            Clear session history
+        </button>
+
+        <div class="history-table-wrap">
+            <table class="history-table">
+                <thead>
+                    <tr>
+                        <th>Image</th>
+                        <th>Predicted class</th>
+                        <th>Confidence</th>
+                        <th>Date and time</th>
+                    </tr>
+                </thead>
+                <tbody id="historyRows">
+                    <tr><td colspan="4">No predictions yet.</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+</main>
+
+
+<footer class="footer">
+    LeukemiaAI — Academic Project
+</footer>
+
 
 <script>
-    // ------------------------------------
-    // IMAGE UPLOAD AND PREDICTION
-    // ------------------------------------
 
-    const imageInput = document.getElementById("imageInput");
-    const uploadBox = document.getElementById("uploadBox");
-    const preview = document.getElementById("preview");
-    const fileName = document.getElementById("fileName");
-    const analyzeBtn = document.getElementById("analyzeBtn");
+// ---------------- BACKEND URL ----------------
 
-    const emptyResult = document.getElementById("emptyResult");
-    const resultContent = document.getElementById("resultContent");
-    const predictionText = document.getElementById("predictionText");
-    const confidenceText = document.getElementById("confidenceText");
-    const confidenceBar = document.getElementById("confidenceBar");
-    const errorMessage = document.getElementById("errorMessage");
+const API_URL =
+    "https://leukemiaai-api.onrender.com";
 
-    let selectedFile = null;
+const apiStatus = document.getElementById("apiStatus");
+const apiStatusText = document.getElementById("apiStatusText");
+const modelTypeText = document.getElementById("modelTypeText");
+let predictionBackendReady = false;
 
-    uploadBox.addEventListener("click", () => {
-        imageInput.click();
-    });
+async function checkBackendHealth() {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
 
-    imageInput.addEventListener("change", () => {
-        const file = imageInput.files[0];
+    try {
+        const response = await fetch(`${API_URL}/health`, {
+            signal: controller.signal
+        });
+        const data = await response.json();
 
-        if (!file) {
+        if (!data.model_available) {
+            predictionBackendReady = false;
+            apiStatusText.textContent = "Model unavailable";
+            modelTypeText.textContent = "Model Type: unavailable";
+            apiStatus.classList.add("status-error");
+            predictButton.disabled = true;
+            resultBox.style.display = "block";
+            const modelError =
+                typeof data.error === "string" && data.error.trim()
+                    ? data.error
+                    : "The deployed backend cannot load the trained model.";
+            resultBox.textContent =
+                `${modelError} Verify the Render root directory includes ` +
+                `${data.model_file || "the configured model file"}, then redeploy.`;
             return;
         }
 
-        if (!["image/jpeg", "image/png"].includes(file.type)) {
-            showError("Please select a JPG or PNG image.");
-            imageInput.value = "";
-            selectedFile = null;
-            analyzeBtn.disabled = true;
-            return;
+        if (!response.ok || data.status !== "healthy") {
+            throw new Error("Backend is not healthy.");
         }
 
-        selectedFile = file;
-
-        preview.src = URL.createObjectURL(file);
-        preview.style.display = "block";
-
-        fileName.textContent = file.name;
-        analyzeBtn.disabled = false;
-
-        errorMessage.style.display = "none";
-
-        emptyResult.style.display = "block";
-        resultContent.style.display = "none";
-    });
-
-    analyzeBtn.addEventListener("click", async () => {
-        if (!selectedFile) {
-            showError("Please select an image first.");
-            return;
+        apiStatusText.textContent = "Backend ready";
+        modelTypeText.textContent =
+            `Model Type: ${data.model_type || "unknown"} (${data.model_file || "model"})`;
+        apiStatus.classList.remove("status-error");
+        predictionBackendReady = true;
+        predictButton.disabled = false;
+        if (resultBox.textContent.includes("Verify the Render root directory and redeploy")) {
+            resultBox.style.display = "none";
         }
+    } catch {
+        predictionBackendReady = false;
+        apiStatusText.textContent = "Backend unavailable";
+        modelTypeText.textContent = "Model Type: unavailable";
+        apiStatus.classList.add("status-error");
+        predictButton.disabled = true;
+        resultBox.style.display = "block";
+        resultBox.textContent =
+            "Cannot reach the prediction backend. Check the deployment and try again.";
+    } finally {
+        clearTimeout(timeout);
+    }
+}
 
-        analyzeBtn.disabled = true;
-        analyzeBtn.textContent = "Analyzing...";
-        errorMessage.style.display = "none";
+checkBackendHealth();
 
-        const formData = new FormData();
-        formData.append("file", selectedFile);
+function getApiError(data, status) {
+    if (data && typeof data.detail === "string") {
+        return data.detail;
+    }
+    if (data && Array.isArray(data.detail)) {
+        return data.detail.map((item) => item.msg || "Invalid request").join("; ");
+    }
+    return `Request failed with HTTP ${status}.`;
+}
 
-        try {
-            const response = await fetch(
-                "http://127.0.0.1:8000/predict",
-                {
-                    method: "POST",
-                    body: formData
-                }
-            );
 
-            const data = await response.json();
+// ---------------- PREDICTION ----------------
 
-            if (!response.ok) {
+const imageInput =
+    document.getElementById("imageInput");
+
+const preview =
+    document.getElementById("preview");
+
+const previewImage =
+    document.getElementById("previewImage");
+
+const fileName =
+    document.getElementById("fileName");
+
+const resultBox =
+    document.getElementById("resultBox");
+
+const predictButton =
+    document.getElementById("predictButton");
+
+
+imageInput.addEventListener("change", function() {
+
+    const file = this.files[0];
+
+    resultBox.style.display = "none";
+
+    if (!file) {
+        preview.style.display = "none";
+        return;
+    }
+
+    if (!["image/jpeg", "image/png"].includes(file.type)) {
+        resultBox.style.display = "block";
+        resultBox.textContent = "Please select a JPEG or PNG image.";
+        this.value = "";
+        preview.style.display = "none";
+        return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+        resultBox.style.display = "block";
+        resultBox.textContent = "Image must be smaller than 10 MB.";
+        this.value = "";
+        preview.style.display = "none";
+        return;
+    }
+
+    previewImage.src =
+        URL.createObjectURL(file);
+
+    fileName.textContent =
+        file.name;
+
+    preview.style.display =
+        "block";
+
+});
+
+
+async function predictImage() {
+
+    const file = imageInput.files[0];
+
+    if (!file) {
+        resultBox.style.display = "block";
+        resultBox.textContent = "Please upload a blood smear image.";
+        return;
+    }
+
+    const formData = new FormData();
+
+    formData.append("file", file);
+
+    predictButton.disabled = true;
+
+    predictButton.textContent =
+        "Analyzing...";
+
+    resultBox.style.display =
+        "block";
+
+    resultBox.innerHTML =
+        "<h4>Analyzing image...</h4><p>Please wait while the AI model processes your image.</p>";
+
+    const controller =
+        new AbortController();
+
+    const timeout =
+        setTimeout(() => controller.abort(), 120000);
+
+    try {
+
+        const response = await fetch(
+            `${API_URL}/predict`,
+            {
+                method: "POST",
+                body: formData,
+                signal: controller.signal
+            }
+        );
+
+        const data = await response.json().catch(() => null);
+
+        if (!response.ok) {
+            if (response.status === 404) {
                 throw new Error(
-                    data.detail || "Image prediction failed."
+                    "The deployed backend does not have the /predict route. Redeploy the backend."
                 );
             }
-
-            predictionText.textContent = data.predicted_class;
-
-            const confidence = Number(data.confidence);
-
-            confidenceText.textContent =
-                confidence.toFixed(2) + "%";
-
-            confidenceBar.style.width =
-                Math.min(100, Math.max(0, confidence)) + "%";
-
-            emptyResult.style.display = "none";
-            resultContent.style.display = "block";
-
-            // Add prediction to history and update analytics
-            addPredictionToHistory(
-                selectedFile.name,
-                data.predicted_class,
-                confidence
-            );
-
-        } catch (error) {
-            showError(
-                "Could not connect to the backend. " +
-                "Check that the FastAPI server is running. " +
-                error.message
-            );
-        } finally {
-            analyzeBtn.disabled = !selectedFile;
-            analyzeBtn.textContent = "Analyze Image";
-        }
-    });
-
-    function showError(message) {
-        errorMessage.textContent = message;
-        errorMessage.style.display = "block";
-    }
-
-
-    // ------------------------------------
-    // EDUCATIONAL CHATBOT
-    // ------------------------------------
-
-    const chatForm = document.getElementById("chatForm");
-    const chatInput = document.getElementById("chatInput");
-    const chatMessages = document.getElementById("chatMessages");
-
-    function getChatbotReply(question) {
-        const q = question.toLowerCase().trim();
-
-        if (q.includes("hello") || q === "hi" || q.startsWith("hi ")) {
-            return "Hello! 👋 Ask me about leukemia, its types, or your CNN project.";
-        }
-
-        if (q.includes("what is leukemia") || q.includes("define leukemia")) {
-            return "Leukemia is a group of cancers involving blood-forming tissues, including the bone marrow. It affects the production and function of blood cells. This chatbot provides general educational information only.";
-        }
-
-        // ALL check avoids matching unrelated uses of the word "all"
-        if (
-            q.includes("acute lymphoblastic") ||
-            q.includes("all leukemia") ||
-            q === "all"
-        ) {
-            return "ALL stands for Acute Lymphoblastic Leukemia. It involves immature lymphoid cells and is commonly discussed as a rapidly progressing leukemia.";
-        }
-
-        if (q.includes("aml") || q.includes("acute myeloid")) {
-            return "AML stands for Acute Myeloid Leukemia. It involves myeloid-lineage cells and is generally an acute, rapidly progressing leukemia.";
-        }
-
-        if (q.includes("cll") || q.includes("chronic lymphocytic")) {
-            return "CLL stands for Chronic Lymphocytic Leukemia. It involves lymphocytes and often progresses more slowly than acute leukemia types.";
-        }
-
-        if (q.includes("cml") || q.includes("chronic myeloid")) {
-            return "CML stands for Chronic Myeloid Leukemia. It involves myeloid cells and is often associated with the BCR-ABL1 genetic change.";
-        }
-
-        if (q.includes("cnn") || q.includes("model")) {
-            return "CNN means Convolutional Neural Network. It learns visual patterns from images. In your project, the model analyzes a peripheral blood smear image and returns one of its trained classes.";
-        }
-
-        if (q.includes("confidence")) {
-            return "The confidence score is the model's reported probability-like score for its selected class. A score such as 48.28% does not mean there is a 48.28% chance that a person has leukemia. Model confidence is not a medical diagnosis.";
-        }
-
-        if (q.includes("normal")) {
-            return "The Normal & Reactive class represents the normal or reactive category used by your dataset/model. A model prediction in this class cannot rule out a medical condition.";
-        }
-
-        if (q.includes("project") || q.includes("workflow")) {
-            return "Your project workflow is: upload a peripheral blood smear image → send it to the FastAPI backend → preprocess the image → run the CNN model → display the predicted class and confidence in the dashboard.";
+            throw new Error(getApiError(data, response.status));
         }
 
         if (
-            q.includes("diagnosis") ||
-            q.includes("treatment") ||
-            q.includes("medicine")
+            !data
+            || data.success !== true
+            || typeof data.predicted_class !== "string"
+            || typeof data.result !== "string"
+            || !Number.isFinite(Number(data.confidence))
+            || !data.class_probabilities
+            || typeof data.class_probabilities !== "object"
         ) {
-            return "I can explain general educational concepts, but I cannot diagnose a person or recommend treatment or medicine. Please consult a qualified healthcare professional for medical concerns.";
+            throw new Error("The backend returned an incomplete prediction.");
         }
 
-        return "I don't have a predefined answer for that question yet. Try asking about leukemia, ALL, AML, CLL, CML, CNN, confidence, or your project workflow.";
-    }
+        const isNormal =
+            data.predicted_class === "Normal & Reactive";
 
-    function addChatMessage(message, sender) {
-        const bubble = document.createElement("div");
+        const resultClass =
+            isNormal
+                ? "result-normal"
+                : "result-leukemia";
 
-        bubble.textContent = message;
-
-        bubble.style.padding = "12px";
-        bubble.style.borderRadius = "10px";
-        bubble.style.marginBottom = "10px";
-        bubble.style.whiteSpace = "pre-wrap";
-
-        if (sender === "user") {
-            bubble.style.background = "#e7efff";
-            bubble.style.marginLeft = "20px";
-        } else {
-            bubble.style.background = "#e1f8ef";
-            bubble.style.marginRight = "20px";
+        const probabilityEntries = Object.entries(data.class_probabilities);
+        const expectedClasses = [
+            "Acute Lymphoblastic Leukemia",
+            "Acute Myeloid Leukemia",
+            "Chronic Lymphocytic Leukemia",
+            "Chronic Myeloid Leukemia",
+            "Normal & Reactive"
+        ];
+        if (
+            probabilityEntries.length !== 5
+            || expectedClasses.some((name) => !(name in data.class_probabilities))
+            || probabilityEntries.some(([, value]) => (
+                !Number.isFinite(Number(value))
+                || Number(value) < 0
+                || Number(value) > 100
+            ))
+        ) {
+            throw new Error("The backend returned invalid class probabilities.");
         }
 
-        chatMessages.appendChild(bubble);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
+        const expectedResult =
+            isNormal ? "Normal & Reactive" : "Leukemia Detected";
+        if (data.result !== expectedResult) {
+            throw new Error("The backend returned an inconsistent class result.");
+        }
+
+        const probabilitiesHTML = probabilityEntries.map(([name, probability]) => {
+            const width = Number(probability);
+            return `
+                <div class="probability-row">
+                    <div class="probability-label">
+                        <span>${escapeHTML(name)}</span>
+                        <strong>${width.toFixed(2)}%</strong>
+                    </div>
+                    <div class="progress">
+                        <div class="progress-bar" style="width:${width}%"></div>
+                    </div>
+                </div>
+            `;
+        }).join("");
+
+        resultBox.innerHTML = `
+            <h4 class="${resultClass}">
+                ${escapeHTML(data.result)}
+            </h4>
+            <p>
+                <strong>Predicted Class:</strong>
+                ${escapeHTML(data.predicted_class)}
+            </p>
+            <p>
+                <strong>Top class score (not clinical confidence):</strong>
+                ${Number(data.confidence).toFixed(2)}%
+            </p>
+            <h4>Class Probabilities</h4>
+            ${probabilitiesHTML}
+            <p class="disclaimer">
+                ${escapeHTML(data.disclaimer || "")}
+            </p>
+        `;
+
+        recordPrediction(file.name, data.predicted_class, Number(data.confidence));
+
+    } catch (error) {
+
+        let errorMessage = error.message;
+
+        if (error.name === "AbortError") {
+
+            errorMessage =
+                "The prediction request timed out. The backend may be waking up or processing the model.";
+
+        }
+
+        resultBox.innerHTML = `
+            <h4 class="result-leukemia">
+                Prediction Failed
+            </h4>
+
+            <p>${escapeHTML(errorMessage)}</p>
+
+            <p class="disclaimer">
+                Please check the backend API and try again.
+            </p>
+        `;
+
+    } finally {
+
+        clearTimeout(timeout);
+
+        predictButton.disabled = !predictionBackendReady;
+
+        predictButton.textContent =
+            "Analyze Image";
+
     }
 
-    chatForm.addEventListener("submit", function (event) {
+}
+
+
+// ---------------- CHATBOT ----------------
+
+const chatWindow =
+    document.getElementById("chatWindow");
+
+const chatInput =
+    document.getElementById("chatInput");
+
+const sendButton =
+    document.getElementById("sendButton");
+
+const chatForm =
+    document.getElementById("chatForm");
+
+const clearChatButton =
+    document.getElementById("clearChatButton");
+
+let conversationHistory = [];
+const welcomeMessage =
+    "Hi! I'm LeukemiaAI Assistant.\n\n" +
+    "Ask me about leukemia, blood tests, treatment approaches, " +
+    "or this project's AI model. Educational information only.";
+
+
+function addChatMessage(
+    message,
+    className
+) {
+
+    const messageElement =
+        document.createElement("div");
+
+    messageElement.className =
+        "chat-message " + className;
+
+    messageElement.textContent =
+        message;
+
+    chatWindow.appendChild(
+        messageElement
+    );
+
+    chatWindow.scrollTop =
+        chatWindow.scrollHeight;
+
+    return messageElement;
+
+}
+
+
+async function sendMessage() {
+
+    const message =
+        chatInput.value.trim();
+
+    if (!message || sendButton.disabled) {
+        return;
+    }
+
+    addChatMessage(
+        message,
+        "user-message"
+    );
+
+    chatInput.value = "";
+
+    sendButton.disabled = true;
+    clearChatButton.disabled = true;
+
+    const thinkingMessage =
+        addChatMessage(
+            "Thinking",
+            "bot-message"
+        );
+    thinkingMessage.setAttribute("aria-busy", "true");
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 60000);
+
+    try {
+
+        const response = await fetch(
+            `${API_URL}/chat`,
+            {
+                method: "POST",
+
+                headers: {
+                    "Content-Type": "application/json"
+                },
+
+                signal: controller.signal,
+
+                body: JSON.stringify({
+
+                    message: message,
+
+                    history:
+                        conversationHistory
+
+                })
+
+            }
+        );
+
+        const data = await response.json().catch(() => null);
+
+        if (!response.ok) {
+            if (response.status === 404) {
+                throw new Error(
+                    "The deployed backend does not have the /chat route. Redeploy the backend to enable the chatbot."
+                );
+            }
+            throw new Error(getApiError(data, response.status));
+        }
+
+        if (!data || data.success !== true || typeof data.answer !== "string" || !data.answer.trim()) {
+            throw new Error("The chatbot returned an empty answer.");
+        }
+
+        thinkingMessage.textContent = data.answer;
+        thinkingMessage.removeAttribute("aria-busy");
+
+        conversationHistory.push(
+            {
+                role: "user",
+                content: message
+            },
+            {
+                role: "assistant",
+                content: data.answer
+            }
+        );
+
+        // Keep recent conversation history.
+
+        conversationHistory =
+            conversationHistory.slice(-12);
+
+    } catch (error) {
+
+        if (error.name === "AbortError") {
+            error.message = "The chatbot request timed out. Please try again.";
+        }
+
+        thinkingMessage.textContent =
+            "Sorry, I couldn't connect to the chatbot. " +
+            error.message;
+        thinkingMessage.removeAttribute("aria-busy");
+
+    } finally {
+
+        clearTimeout(timeout);
+        sendButton.disabled = false;
+        clearChatButton.disabled = false;
+
+        chatInput.focus();
+
+        chatWindow.scrollTop =
+            chatWindow.scrollHeight;
+
+    }
+
+}
+
+chatInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault();
+        if (!sendButton.disabled) {
+            sendMessage();
+        }
+    }
+});
+
+clearChatButton.addEventListener("click", () => {
+    if (sendButton.disabled) {
+        return;
+    }
+
+    conversationHistory = [];
+    chatWindow.replaceChildren();
+    addChatMessage(welcomeMessage, "bot-message");
+    chatInput.value = "";
+});
+
+
+chatForm.addEventListener(
+    "submit",
+    function(event) {
+
         event.preventDefault();
 
-        const question = chatInput.value.trim();
+        sendMessage();
 
-        if (!question) {
-            return;
-        }
-
-        addChatMessage(question, "user");
-
-        const answer = getChatbotReply(question);
-
-        addChatMessage(answer, "bot");
-
-        chatInput.value = "";
-        chatInput.focus();
-    });
+    }
+);
 
 
-    // ------------------------------------
-    // PREDICTION HISTORY
-    // ------------------------------------
+function askSuggestion(question) {
 
-    const historyBody = document.getElementById("historyBody");
-    const clearHistoryBtn = document.getElementById("clearHistoryBtn");
+    chatInput.value = question;
 
-    let predictionHistory = [];
+    sendMessage();
 
-    function addPredictionToHistory(
-        imageName,
+}
+
+const predictionHistory = [];
+document.getElementById("clearHistoryButton").addEventListener("click", () => {
+    predictionHistory.length = 0;
+    renderPredictionHistory();
+});
+
+function recordPrediction(fileName, predictedClass, confidence) {
+    predictionHistory.unshift({
+        fileName,
         predictedClass,
-        confidence
-    ) {
-        const prediction = {
-            imageName: imageName,
-            predictedClass: predictedClass,
-            confidence: confidence,
-            dateTime: new Date().toLocaleString()
-        };
+        confidence,
+        createdAt: new Date()
+    });
+    renderPredictionHistory();
+}
 
-        predictionHistory.unshift(prediction);
+function renderPredictionHistory() {
+    const historyRows = document.getElementById("historyRows");
+    const totalAnalyzed = document.getElementById("totalAnalyzed");
+    const mostPredictedClass = document.getElementById("mostPredictedClass");
+    const classDistribution = document.getElementById("classDistribution");
 
-        // Keep only the latest 10 predictions
-        predictionHistory = predictionHistory.slice(0, 10);
+    totalAnalyzed.textContent = String(predictionHistory.length);
 
-        renderPredictionHistory();
+    if (predictionHistory.length === 0) {
+        mostPredictedClass.textContent = "—";
+        historyRows.innerHTML = '<tr><td colspan="4">No predictions yet.</td></tr>';
+        classDistribution.innerHTML =
+            '<p class="disclaimer">Analyze an image to see class statistics.</p>';
+        return;
     }
 
-    function renderPredictionHistory() {
-        historyBody.innerHTML = "";
-
-        // Show empty message when there are no predictions
-        if (predictionHistory.length === 0) {
-            const row = document.createElement("tr");
-            const cell = document.createElement("td");
-
-            cell.colSpan = 4;
-            cell.textContent = "No predictions yet.";
-
-            row.appendChild(cell);
-            historyBody.appendChild(row);
-
-            updateAnalytics();
-            return;
-        }
-
-        predictionHistory.forEach((item) => {
-            const row = document.createElement("tr");
-
-            const imageCell = document.createElement("td");
-            imageCell.textContent = item.imageName;
-
-            const classCell = document.createElement("td");
-            classCell.textContent = item.predictedClass;
-
-            const confidenceCell = document.createElement("td");
-            confidenceCell.textContent =
-                Number(item.confidence).toFixed(2) + "%";
-
-            const dateCell = document.createElement("td");
-            dateCell.textContent = item.dateTime;
-
-            [
-                imageCell,
-                classCell,
-                confidenceCell,
-                dateCell
-            ].forEach((cell) => {
-                row.appendChild(cell);
-            });
-
-            historyBody.appendChild(row);
-        });
-
-        updateAnalytics();
-    }
-
-    clearHistoryBtn.addEventListener("click", () => {
-        predictionHistory = [];
-        renderPredictionHistory();
+    const counts = {};
+    predictionHistory.forEach((prediction) => {
+        counts[prediction.predictedClass] =
+            (counts[prediction.predictedClass] || 0) + 1;
     });
 
+    const mostCommon = Object.entries(counts)
+        .sort((first, second) => second[1] - first[1])[0][0];
+    mostPredictedClass.textContent = mostCommon;
 
-    // ------------------------------------
-    // VISUAL ANALYTICS
-    // ------------------------------------
-
-    function updateAnalytics() {
-        const totalAnalyzed =
-            document.getElementById("totalAnalyzed");
-
-        const mostPredictedClass =
-            document.getElementById("mostPredictedClass");
-
-        const classDistribution =
-            document.getElementById("classDistribution");
-
-        totalAnalyzed.textContent = predictionHistory.length;
-
-        if (predictionHistory.length === 0) {
-            mostPredictedClass.textContent = "-";
-
-            classDistribution.innerHTML =
-                '<p style="color:#8491a5; font-size:13px;">' +
-                'Analyze an image to view class statistics.' +
-                '</p>';
-
-            return;
-        }
-
-        const classCounts = {};
-
-        predictionHistory.forEach((item) => {
-            classCounts[item.predictedClass] =
-                (classCounts[item.predictedClass] || 0) + 1;
+    historyRows.replaceChildren();
+    predictionHistory.forEach((prediction) => {
+        const row = historyRows.insertRow();
+        [
+            prediction.fileName,
+            prediction.predictedClass,
+            `${prediction.confidence.toFixed(2)}%`,
+            prediction.createdAt.toLocaleString()
+        ].forEach((value) => {
+            row.insertCell().textContent = value;
         });
+    });
 
-        const sortedClasses = Object.entries(classCounts)
-            .sort((a, b) => b[1] - a[1]);
+    classDistribution.replaceChildren();
+    Object.entries(counts).forEach(([name, count]) => {
+        const row = document.createElement("div");
+        row.className = "distribution-row";
 
-        mostPredictedClass.textContent = sortedClasses[0][0];
+        const label = document.createElement("div");
+        label.className = "distribution-label";
+        label.textContent = `${name} (${count})`;
 
-        classDistribution.innerHTML = "";
+        const track = document.createElement("div");
+        track.className = "progress";
 
-        sortedClasses.forEach(([className, count]) => {
-            const percentage =
-                (count / predictionHistory.length) * 100;
+        const bar = document.createElement("div");
+        bar.className = "progress-bar";
+        bar.style.width = `${(count / predictionHistory.length) * 100}%`;
 
-            const row = document.createElement("div");
-            row.style.marginBottom = "16px";
+        track.appendChild(bar);
+        row.append(label, track);
+        classDistribution.appendChild(row);
+    });
+}
 
-            const label = document.createElement("div");
 
-            label.style.display = "flex";
-            label.style.justifyContent = "space-between";
-            label.style.marginBottom = "6px";
-            label.style.fontSize = "13px";
-            label.style.color = "#64748b";
+// ---------------- SAFE HTML TEXT ----------------
 
-            const name = document.createElement("span");
-            name.textContent = className;
+function escapeHTML(value) {
 
-            const countText = document.createElement("strong");
+    return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
 
-            countText.textContent =
-                count + " (" + percentage.toFixed(1) + "%)";
-
-            label.appendChild(name);
-            label.appendChild(countText);
-
-            const track = document.createElement("div");
-
-            track.style.height = "10px";
-            track.style.background = "#e8edf4";
-            track.style.borderRadius = "10px";
-            track.style.overflow = "hidden";
-
-            const bar = document.createElement("div");
-
-            bar.style.width = percentage + "%";
-            bar.style.height = "100%";
-            bar.style.background = "#168c9b";
-            bar.style.borderRadius = "10px";
-            bar.style.transition = "width 0.3s";
-
-            track.appendChild(bar);
-            row.appendChild(label);
-            row.appendChild(track);
-
-            classDistribution.appendChild(row);
-        });
-    }
-
-    // Initialize analytics when the dashboard loads
-    updateAnalytics();
+}
 
 </script>
 

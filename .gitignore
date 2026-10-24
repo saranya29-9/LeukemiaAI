@@ -19,3 +19,6 @@ data/
 
 # Editor files
 .vscode/
+
+# Frontend dependencies
+node_modules/
