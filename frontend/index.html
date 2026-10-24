@@ -1,0 +1,1092 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leukemia Detection | AI Dashboard</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Segoe UI", Arial, sans-serif;
+        }
+
+        body {
+            background: #f4f7fb;
+            color: #263247;
+        }
+
+        .app {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 245px;
+            background: #172b4d;
+            color: white;
+            padding: 28px 18px;
+            flex-shrink: 0;
+        }
+
+        .brand {
+            font-size: 21px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .brand span {
+            color: #67e8d4;
+        }
+
+        .brand-subtitle {
+            color: #b9c8df;
+            font-size: 12px;
+            margin-bottom: 38px;
+        }
+
+        .menu-label {
+            color: #91a5c5;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin: 20px 10px 12px;
+        }
+
+        .nav-item {
+            display: block;
+            text-decoration: none;
+            color: #d8e2f2;
+            padding: 13px 14px;
+            border-radius: 9px;
+            margin-bottom: 7px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .nav-item.active,
+        .nav-item:hover {
+            background: #29466f;
+            color: white;
+        }
+
+        .sidebar-note {
+            margin-top: 50px;
+            padding: 14px;
+            background: #213b61;
+            border-radius: 12px;
+            font-size: 12px;
+            line-height: 1.6;
+            color: #c9d7eb;
+        }
+
+        /* Main content */
+        .main {
+            flex: 1;
+            min-width: 0;
+            padding: 30px;
+        }
+
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 28px;
+        }
+
+        .topbar h1 {
+            font-size: 27px;
+            color: #172b4d;
+        }
+
+        .topbar p {
+            color: #78869b;
+            font-size: 14px;
+            margin-top: 6px;
+        }
+
+        .status {
+            background: #e1f8ef;
+            color: #16865c;
+            padding: 9px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        /* Summary cards */
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 18px;
+            margin-bottom: 25px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 22px;
+            border-radius: 14px;
+            border: 1px solid #e8edf4;
+        }
+
+        .stat-card p {
+            color: #7b899d;
+            font-size: 13px;
+            margin-bottom: 12px;
+        }
+
+        .stat-card h2 {
+            color: #172b4d;
+            font-size: 25px;
+        }
+
+        .stat-card small {
+            color: #8794a8;
+            font-size: 12px;
+        }
+
+        /* Panels */
+        .content-grid {
+            display: grid;
+            grid-template-columns: 1.1fr 0.9fr;
+            gap: 22px;
+        }
+
+        .panel {
+            background: white;
+            border: 1px solid #e8edf4;
+            border-radius: 15px;
+            padding: 24px;
+            min-width: 0;
+        }
+
+        .panel h3 {
+            color: #172b4d;
+            font-size: 18px;
+            margin-bottom: 8px;
+        }
+
+        .panel-description {
+            color: #8491a5;
+            font-size: 13px;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        /* Upload */
+        .upload-box {
+            border: 2px dashed #b9c9df;
+            background: #f8fbff;
+            border-radius: 13px;
+            padding: 28px 18px;
+            text-align: center;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .upload-box:hover {
+            border-color: #319caa;
+            background: #f0fbfb;
+        }
+
+        .upload-icon {
+            font-size: 38px;
+            margin-bottom: 12px;
+        }
+
+        .upload-box h4 {
+            color: #314765;
+            font-size: 15px;
+            margin-bottom: 8px;
+        }
+
+        .upload-box p {
+            color: #8a98aa;
+            font-size: 12px;
+        }
+
+        #imageInput {
+            display: none;
+        }
+
+        #preview {
+            display: none;
+            max-width: 100%;
+            max-height: 260px;
+            object-fit: contain;
+            margin: 20px auto 0;
+            border-radius: 10px;
+        }
+
+        .file-name {
+            color: #61738d;
+            font-size: 12px;
+            margin-top: 12px;
+            word-break: break-word;
+        }
+
+        .primary-btn {
+            width: 100%;
+            border: none;
+            border-radius: 9px;
+            padding: 14px;
+            margin-top: 18px;
+            background: #168c9b;
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .primary-btn:hover {
+            background: #117786;
+        }
+
+        .primary-btn:disabled {
+            background: #a8b8c5;
+            cursor: not-allowed;
+        }
+
+        /* Results */
+        .result-empty {
+            background: #f7f9fc;
+            border-radius: 12px;
+            padding: 28px 18px;
+            text-align: center;
+            color: #8a98aa;
+            font-size: 13px;
+            line-height: 1.7;
+        }
+
+        .result-icon {
+            font-size: 34px;
+            margin-bottom: 10px;
+        }
+
+        .result-content {
+            display: none;
+        }
+
+        .result-label {
+            color: #8491a5;
+            font-size: 12px;
+            margin-bottom: 8px;
+        }
+
+        .prediction {
+            color: #172b4d;
+            font-size: 22px;
+            font-weight: 700;
+            line-height: 1.4;
+            margin-bottom: 20px;
+        }
+
+        .confidence-row {
+            display: flex;
+            justify-content: space-between;
+            color: #64748b;
+            font-size: 13px;
+            margin-bottom: 9px;
+        }
+
+        .progress {
+            height: 9px;
+            background: #e8edf4;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            width: 0%;
+            height: 100%;
+            background: #168c9b;
+            border-radius: 10px;
+            transition: width 0.4s;
+        }
+
+        .result-warning {
+            background: #fff7e6;
+            color: #8a651c;
+            padding: 13px;
+            border-radius: 9px;
+            font-size: 12px;
+            line-height: 1.6;
+            margin-top: 22px;
+        }
+
+        .error-message {
+            display: none;
+            color: #b42318;
+            background: #fff0ee;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            margin-top: 14px;
+        }
+
+        .footer {
+            margin-top: 25px;
+            text-align: center;
+            color: #98a4b5;
+            font-size: 12px;
+        }
+
+        /* History table */
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 13px;
+        }
+
+        .history-table th,
+        .history-table td {
+            padding: 10px;
+            border-bottom: 1px solid #e8edf4;
+        }
+
+        .history-table th {
+            color: #64748b;
+        }
+
+        .clear-btn {
+            margin-top: 15px;
+            padding: 10px 16px;
+            background: #172b4d;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        /* Responsive */
+        @media (max-width: 1000px) {
+            .sidebar {
+                width: 200px;
+            }
+
+            .content-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 700px) {
+            .app {
+                display: block;
+            }
+
+            .sidebar {
+                width: 100%;
+                padding: 18px;
+            }
+
+            .brand-subtitle,
+            .menu-label,
+            .sidebar-note {
+                display: none;
+            }
+
+            .sidebar nav {
+                display: flex;
+                gap: 8px;
+                overflow-x: auto;
+                margin-top: 15px;
+            }
+
+            .nav-item {
+                white-space: nowrap;
+                margin: 0;
+            }
+
+            .main {
+                padding: 18px;
+            }
+
+            .stats {
+                grid-template-columns: 1fr;
+            }
+
+            .topbar {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="app">
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="brand">Leukemia<span>AI</span></div>
+        <div class="brand-subtitle">Blood Smear Analysis Platform</div>
+
+        <div class="menu-label">Main Menu</div>
+
+        <nav>
+            <a class="nav-item active" href="#">▦ Dashboard</a>
+            <a class="nav-item" href="#uploadPanel">＋ Image Analysis</a>
+            <a class="nav-item" href="#resultPanel">◈ Results</a>
+            <a class="nav-item" href="#chatbotPanel">✦ AI Chatbot</a>
+        </nav>
+
+        <div class="sidebar-note">
+            <strong>About this project</strong>
+            <br><br>
+            An experimental CNN-based system for classifying peripheral
+            blood smear images.
+        </div>
+    </aside>
+
+    <!-- Main dashboard -->
+    <main class="main">
+
+        <header class="topbar">
+            <div>
+                <h1>Leukemia Detection Dashboard</h1>
+                <p>AI-assisted peripheral blood smear image classification</p>
+            </div>
+
+            <div class="status">● Backend Connected</div>
+        </header>
+
+        <!-- Summary cards -->
+        <section class="stats">
+            <div class="stat-card">
+                <p>Model Classes</p>
+                <h2>05</h2>
+                <small>Four leukemia classes + Normal</small>
+            </div>
+
+            <div class="stat-card">
+                <p>Input Image Size</p>
+                <h2>128 × 128</h2>
+                <small>RGB image</small>
+            </div>
+
+            <div class="stat-card">
+                <p>Model Type</p>
+                <h2>CNN</h2>
+                <small>Experimental image classifier</small>
+            </div>
+        </section>
+
+        <!-- Upload and result panels -->
+        <section class="content-grid">
+
+            <div class="panel" id="uploadPanel">
+                <h3>Upload Blood Smear Image</h3>
+
+                <p class="panel-description">
+                    Select a JPG or PNG peripheral blood smear image
+                    for experimental classification.
+                </p>
+
+                <div class="upload-box" id="uploadBox">
+                    <div class="upload-icon">🩸</div>
+                    <h4>Click to upload an image</h4>
+                    <p>Supported formats: JPG, JPEG, PNG</p>
+
+                    <input
+                        type="file"
+                        id="imageInput"
+                        accept="image/jpeg,image/png"
+                    >
+
+                    <img id="preview" alt="Uploaded blood smear preview">
+
+                    <div class="file-name" id="fileName"></div>
+                </div>
+
+                <button class="primary-btn" id="analyzeBtn" disabled>
+                    Analyze Image
+                </button>
+
+                <div class="error-message" id="errorMessage"></div>
+            </div>
+
+            <div class="panel" id="resultPanel">
+                <h3>Prediction Result</h3>
+
+                <p class="panel-description">
+                    The model's experimental output will appear here.
+                </p>
+
+                <div class="result-empty" id="emptyResult">
+                    <div class="result-icon">🔬</div>
+                    Upload an image and click Analyze Image
+                    to view the prediction.
+                </div>
+
+                <div class="result-content" id="resultContent">
+                    <div class="result-label">Predicted Class</div>
+
+                    <div class="prediction" id="predictionText">-</div>
+
+                    <div class="confidence-row">
+                        <span>Model confidence</span>
+                        <strong id="confidenceText">0%</strong>
+                    </div>
+
+                    <div class="progress">
+                        <div class="progress-bar" id="confidenceBar"></div>
+                    </div>
+
+                    <div class="result-warning">
+                        This is an experimental model prediction, not a
+                        medical diagnosis. Consult a qualified medical
+                        professional for clinical interpretation.
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- Prediction History -->
+        <section class="panel" id="historyPanel" style="margin-top:22px;">
+            <h3>Prediction History</h3>
+
+            <p class="panel-description">
+                View the images analyzed during this dashboard session.
+            </p>
+
+            <div style="overflow-x:auto;">
+                <table class="history-table" id="historyTable">
+                    <thead>
+                        <tr>
+                            <th>Image</th>
+                            <th>Predicted Class</th>
+                            <th>Confidence</th>
+                            <th>Date &amp; Time</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="historyBody">
+                        <tr>
+                            <td colspan="4">No predictions yet.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <button type="button" class="clear-btn" id="clearHistoryBtn">
+                Clear History
+            </button>
+        </section>
+
+        <!-- Visual Analytics -->
+        <section class="panel" id="analyticsPanel" style="margin-top:22px;">
+            <h3>📊 Prediction Analytics</h3>
+
+            <p class="panel-description">
+                Summary of the predictions made during this dashboard session.
+            </p>
+
+            <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:15px; margin-bottom:20px;">
+
+                <div style="background:#f4f7fb; padding:18px; border-radius:10px;">
+                    <p style="font-size:13px; color:#8491a5;">
+                        Total Images Analyzed
+                    </p>
+
+                    <h2 id="totalAnalyzed" style="margin-top:8px; color:#172b4d;">
+                        0
+                    </h2>
+                </div>
+
+                <div style="background:#f4f7fb; padding:18px; border-radius:10px;">
+                    <p style="font-size:13px; color:#8491a5;">
+                        Most Predicted Class
+                    </p>
+
+                    <h2 id="mostPredictedClass"
+                        style="margin-top:8px; color:#172b4d; font-size:18px;">
+                        -
+                    </h2>
+                </div>
+            </div>
+
+            <h4 style="color:#172b4d; margin-bottom:12px;">
+                Class Distribution
+            </h4>
+
+            <div id="classDistribution">
+                <p style="color:#8491a5; font-size:13px;">
+                    Analyze an image to view class statistics.
+                </p>
+            </div>
+        </section>
+
+        <!-- Educational Chatbot -->
+        <section class="panel" id="chatbotPanel" style="margin-top:22px;">
+            <h3>✦ LeukemiaAI Educational Assistant</h3>
+
+            <p class="panel-description">
+                Ask questions about leukemia types, the CNN model,
+                or this project's workflow.
+            </p>
+
+            <div id="chatMessages"
+                 style="height:260px; overflow-y:auto; background:#f7f9fc;
+                        padding:15px; border-radius:10px; margin-bottom:15px;">
+
+                <div style="background:#e1f8ef; padding:12px;
+                            border-radius:10px; margin-bottom:10px;">
+                    Hi! 👋 I'm LeukemiaAI Assistant.
+                    Ask me about leukemia classes or your project.
+                </div>
+            </div>
+
+            <form id="chatForm"
+                  style="display:flex; gap:10px; flex-wrap:wrap;">
+
+                <input
+                    type="text"
+                    id="chatInput"
+                    placeholder="Ask a question..."
+                    required
+                    style="flex:1; min-width:180px; padding:12px;
+                           border:1px solid #d5deea; border-radius:8px;"
+                >
+
+                <button
+                    type="submit"
+                    style="padding:12px 20px; background:#168c9b;
+                           color:white; border:none; border-radius:8px;
+                           cursor:pointer;">
+                    Send
+                </button>
+            </form>
+
+            <p style="font-size:11px; color:#8491a5; margin-top:12px;">
+                Educational use only. This assistant does not provide
+                medical diagnosis or treatment advice.
+            </p>
+        </section>
+
+        <div class="footer">
+            Leukemia Detection Project · Educational and research use only
+        </div>
+
+    </main>
+</div>
+
+<script>
+    // ------------------------------------
+    // IMAGE UPLOAD AND PREDICTION
+    // ------------------------------------
+
+    const imageInput = document.getElementById("imageInput");
+    const uploadBox = document.getElementById("uploadBox");
+    const preview = document.getElementById("preview");
+    const fileName = document.getElementById("fileName");
+    const analyzeBtn = document.getElementById("analyzeBtn");
+
+    const emptyResult = document.getElementById("emptyResult");
+    const resultContent = document.getElementById("resultContent");
+    const predictionText = document.getElementById("predictionText");
+    const confidenceText = document.getElementById("confidenceText");
+    const confidenceBar = document.getElementById("confidenceBar");
+    const errorMessage = document.getElementById("errorMessage");
+
+    let selectedFile = null;
+
+    uploadBox.addEventListener("click", () => {
+        imageInput.click();
+    });
+
+    imageInput.addEventListener("change", () => {
+        const file = imageInput.files[0];
+
+        if (!file) {
+            return;
+        }
+
+        if (!["image/jpeg", "image/png"].includes(file.type)) {
+            showError("Please select a JPG or PNG image.");
+            imageInput.value = "";
+            selectedFile = null;
+            analyzeBtn.disabled = true;
+            return;
+        }
+
+        selectedFile = file;
+
+        preview.src = URL.createObjectURL(file);
+        preview.style.display = "block";
+
+        fileName.textContent = file.name;
+        analyzeBtn.disabled = false;
+
+        errorMessage.style.display = "none";
+
+        emptyResult.style.display = "block";
+        resultContent.style.display = "none";
+    });
+
+    analyzeBtn.addEventListener("click", async () => {
+        if (!selectedFile) {
+            showError("Please select an image first.");
+            return;
+        }
+
+        analyzeBtn.disabled = true;
+        analyzeBtn.textContent = "Analyzing...";
+        errorMessage.style.display = "none";
+
+        const formData = new FormData();
+        formData.append("file", selectedFile);
+
+        try {
+            const response = await fetch(
+                "http://127.0.0.1:8000/predict",
+                {
+                    method: "POST",
+                    body: formData
+                }
+            );
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(
+                    data.detail || "Image prediction failed."
+                );
+            }
+
+            predictionText.textContent = data.predicted_class;
+
+            const confidence = Number(data.confidence);
+
+            confidenceText.textContent =
+                confidence.toFixed(2) + "%";
+
+            confidenceBar.style.width =
+                Math.min(100, Math.max(0, confidence)) + "%";
+
+            emptyResult.style.display = "none";
+            resultContent.style.display = "block";
+
+            // Add prediction to history and update analytics
+            addPredictionToHistory(
+                selectedFile.name,
+                data.predicted_class,
+                confidence
+            );
+
+        } catch (error) {
+            showError(
+                "Could not connect to the backend. " +
+                "Check that the FastAPI server is running. " +
+                error.message
+            );
+        } finally {
+            analyzeBtn.disabled = !selectedFile;
+            analyzeBtn.textContent = "Analyze Image";
+        }
+    });
+
+    function showError(message) {
+        errorMessage.textContent = message;
+        errorMessage.style.display = "block";
+    }
+
+
+    // ------------------------------------
+    // EDUCATIONAL CHATBOT
+    // ------------------------------------
+
+    const chatForm = document.getElementById("chatForm");
+    const chatInput = document.getElementById("chatInput");
+    const chatMessages = document.getElementById("chatMessages");
+
+    function getChatbotReply(question) {
+        const q = question.toLowerCase().trim();
+
+        if (q.includes("hello") || q === "hi" || q.startsWith("hi ")) {
+            return "Hello! 👋 Ask me about leukemia, its types, or your CNN project.";
+        }
+
+        if (q.includes("what is leukemia") || q.includes("define leukemia")) {
+            return "Leukemia is a group of cancers involving blood-forming tissues, including the bone marrow. It affects the production and function of blood cells. This chatbot provides general educational information only.";
+        }
+
+        // ALL check avoids matching unrelated uses of the word "all"
+        if (
+            q.includes("acute lymphoblastic") ||
+            q.includes("all leukemia") ||
+            q === "all"
+        ) {
+            return "ALL stands for Acute Lymphoblastic Leukemia. It involves immature lymphoid cells and is commonly discussed as a rapidly progressing leukemia.";
+        }
+
+        if (q.includes("aml") || q.includes("acute myeloid")) {
+            return "AML stands for Acute Myeloid Leukemia. It involves myeloid-lineage cells and is generally an acute, rapidly progressing leukemia.";
+        }
+
+        if (q.includes("cll") || q.includes("chronic lymphocytic")) {
+            return "CLL stands for Chronic Lymphocytic Leukemia. It involves lymphocytes and often progresses more slowly than acute leukemia types.";
+        }
+
+        if (q.includes("cml") || q.includes("chronic myeloid")) {
+            return "CML stands for Chronic Myeloid Leukemia. It involves myeloid cells and is often associated with the BCR-ABL1 genetic change.";
+        }
+
+        if (q.includes("cnn") || q.includes("model")) {
+            return "CNN means Convolutional Neural Network. It learns visual patterns from images. In your project, the model analyzes a peripheral blood smear image and returns one of its trained classes.";
+        }
+
+        if (q.includes("confidence")) {
+            return "The confidence score is the model's reported probability-like score for its selected class. A score such as 48.28% does not mean there is a 48.28% chance that a person has leukemia. Model confidence is not a medical diagnosis.";
+        }
+
+        if (q.includes("normal")) {
+            return "The Normal & Reactive class represents the normal or reactive category used by your dataset/model. A model prediction in this class cannot rule out a medical condition.";
+        }
+
+        if (q.includes("project") || q.includes("workflow")) {
+            return "Your project workflow is: upload a peripheral blood smear image → send it to the FastAPI backend → preprocess the image → run the CNN model → display the predicted class and confidence in the dashboard.";
+        }
+
+        if (
+            q.includes("diagnosis") ||
+            q.includes("treatment") ||
+            q.includes("medicine")
+        ) {
+            return "I can explain general educational concepts, but I cannot diagnose a person or recommend treatment or medicine. Please consult a qualified healthcare professional for medical concerns.";
+        }
+
+        return "I don't have a predefined answer for that question yet. Try asking about leukemia, ALL, AML, CLL, CML, CNN, confidence, or your project workflow.";
+    }
+
+    function addChatMessage(message, sender) {
+        const bubble = document.createElement("div");
+
+        bubble.textContent = message;
+
+        bubble.style.padding = "12px";
+        bubble.style.borderRadius = "10px";
+        bubble.style.marginBottom = "10px";
+        bubble.style.whiteSpace = "pre-wrap";
+
+        if (sender === "user") {
+            bubble.style.background = "#e7efff";
+            bubble.style.marginLeft = "20px";
+        } else {
+            bubble.style.background = "#e1f8ef";
+            bubble.style.marginRight = "20px";
+        }
+
+        chatMessages.appendChild(bubble);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    chatForm.addEventListener("submit", function (event) {
+        event.preventDefault();
+
+        const question = chatInput.value.trim();
+
+        if (!question) {
+            return;
+        }
+
+        addChatMessage(question, "user");
+
+        const answer = getChatbotReply(question);
+
+        addChatMessage(answer, "bot");
+
+        chatInput.value = "";
+        chatInput.focus();
+    });
+
+
+    // ------------------------------------
+    // PREDICTION HISTORY
+    // ------------------------------------
+
+    const historyBody = document.getElementById("historyBody");
+    const clearHistoryBtn = document.getElementById("clearHistoryBtn");
+
+    let predictionHistory = [];
+
+    function addPredictionToHistory(
+        imageName,
+        predictedClass,
+        confidence
+    ) {
+        const prediction = {
+            imageName: imageName,
+            predictedClass: predictedClass,
+            confidence: confidence,
+            dateTime: new Date().toLocaleString()
+        };
+
+        predictionHistory.unshift(prediction);
+
+        // Keep only the latest 10 predictions
+        predictionHistory = predictionHistory.slice(0, 10);
+
+        renderPredictionHistory();
+    }
+
+    function renderPredictionHistory() {
+        historyBody.innerHTML = "";
+
+        // Show empty message when there are no predictions
+        if (predictionHistory.length === 0) {
+            const row = document.createElement("tr");
+            const cell = document.createElement("td");
+
+            cell.colSpan = 4;
+            cell.textContent = "No predictions yet.";
+
+            row.appendChild(cell);
+            historyBody.appendChild(row);
+
+            updateAnalytics();
+            return;
+        }
+
+        predictionHistory.forEach((item) => {
+            const row = document.createElement("tr");
+
+            const imageCell = document.createElement("td");
+            imageCell.textContent = item.imageName;
+
+            const classCell = document.createElement("td");
+            classCell.textContent = item.predictedClass;
+
+            const confidenceCell = document.createElement("td");
+            confidenceCell.textContent =
+                Number(item.confidence).toFixed(2) + "%";
+
+            const dateCell = document.createElement("td");
+            dateCell.textContent = item.dateTime;
+
+            [
+                imageCell,
+                classCell,
+                confidenceCell,
+                dateCell
+            ].forEach((cell) => {
+                row.appendChild(cell);
+            });
+
+            historyBody.appendChild(row);
+        });
+
+        updateAnalytics();
+    }
+
+    clearHistoryBtn.addEventListener("click", () => {
+        predictionHistory = [];
+        renderPredictionHistory();
+    });
+
+
+    // ------------------------------------
+    // VISUAL ANALYTICS
+    // ------------------------------------
+
+    function updateAnalytics() {
+        const totalAnalyzed =
+            document.getElementById("totalAnalyzed");
+
+        const mostPredictedClass =
+            document.getElementById("mostPredictedClass");
+
+        const classDistribution =
+            document.getElementById("classDistribution");
+
+        totalAnalyzed.textContent = predictionHistory.length;
+
+        if (predictionHistory.length === 0) {
+            mostPredictedClass.textContent = "-";
+
+            classDistribution.innerHTML =
+                '<p style="color:#8491a5; font-size:13px;">' +
+                'Analyze an image to view class statistics.' +
+                '</p>';
+
+            return;
+        }
+
+        const classCounts = {};
+
+        predictionHistory.forEach((item) => {
+            classCounts[item.predictedClass] =
+                (classCounts[item.predictedClass] || 0) + 1;
+        });
+
+        const sortedClasses = Object.entries(classCounts)
+            .sort((a, b) => b[1] - a[1]);
+
+        mostPredictedClass.textContent = sortedClasses[0][0];
+
+        classDistribution.innerHTML = "";
+
+        sortedClasses.forEach(([className, count]) => {
+            const percentage =
+                (count / predictionHistory.length) * 100;
+
+            const row = document.createElement("div");
+            row.style.marginBottom = "16px";
+
+            const label = document.createElement("div");
+
+            label.style.display = "flex";
+            label.style.justifyContent = "space-between";
+            label.style.marginBottom = "6px";
+            label.style.fontSize = "13px";
+            label.style.color = "#64748b";
+
+            const name = document.createElement("span");
+            name.textContent = className;
+
+            const countText = document.createElement("strong");
+
+            countText.textContent =
+                count + " (" + percentage.toFixed(1) + "%)";
+
+            label.appendChild(name);
+            label.appendChild(countText);
+
+            const track = document.createElement("div");
+
+            track.style.height = "10px";
+            track.style.background = "#e8edf4";
+            track.style.borderRadius = "10px";
+            track.style.overflow = "hidden";
+
+            const bar = document.createElement("div");
+
+            bar.style.width = percentage + "%";
+            bar.style.height = "100%";
+            bar.style.background = "#168c9b";
+            bar.style.borderRadius = "10px";
+            bar.style.transition = "width 0.3s";
+
+            track.appendChild(bar);
+            row.appendChild(label);
+            row.appendChild(track);
+
+            classDistribution.appendChild(row);
+        });
+    }
+
+    // Initialize analytics when the dashboard loads
+    updateAnalytics();
+
+</script>
+
+</body>
+</html>
