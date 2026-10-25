@@ -1,541 +1,330 @@
-
 import os
-import io
-import re
-import threading
 from pathlib import Path
-from typing import Literal
+from io import BytesIO
+from typing import Optional
 
 import numpy as np
+import tensorflow as tf
+
 from PIL import Image, UnidentifiedImageError
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field
-import tensorflow as tf
-from openai import APITimeoutError, OpenAI, OpenAIError
+from pydantic import BaseModel
 
 
-# ---------------- CONFIGURATION ----------------
+# =========================================================
+# CONFIGURATION
+# =========================================================
 
 BASE_DIR = Path(__file__).resolve().parent
-PROJECT_DIR = BASE_DIR.parent
-MODEL_PATH = Path(
-    os.getenv("MODEL_PATH", str(PROJECT_DIR / "leukemia_cnn_lstm_200.keras"))
-).expanduser()
-if not MODEL_PATH.is_absolute():
-    MODEL_PATH = PROJECT_DIR / MODEL_PATH
 
-IMAGE_SIZE = (128, 128)
-MAX_IMAGE_BYTES = 10 * 1024 * 1024
-MAX_IMAGE_PIXELS = 20_000_000
+MODEL_PATH = Path(
+    os.getenv(
+        "MODEL_PATH",
+        str(BASE_DIR.parent / "leukemia_cnn_lstm_200.keras")
+    )
+)
+
+IMAGE_SIZE = 128
+MAX_FILE_BYTES = 10 * 1024 * 1024  # 10 MB file size limit
+
+# Adjusted threshold to 45.0% to prevent valid PBS images 
+# (which might score in the 50-60% range) from being falsely rejected,
+# while still filtering out completely unrelated documents/certificates.
+CONFIDENCE_THRESHOLD = 45.0 
 
 CLASS_NAMES = [
-    "Acute Lymphoblastic Leukemia",
-    "Acute Myeloid Leukemia",
-    "Chronic Lymphocytic Leukemia",
-    "Chronic Myeloid Leukemia",
+    "Acute Lymphoblastic Leukemia (ALL)",
+    "Acute Myeloid Leukemia (AML)",
+    "Chronic Lymphocytic Leukemia (CLL)",
+    "Chronic Myeloid Leukemia (CML)",
     "Normal & Reactive",
 ]
 
-DEFAULT_FRONTEND_ORIGIN = (
-    "https://leukemiaai-frontend-git-main-saranyadunnapothula-5686.vercel.app"
-)
-FRONTEND_ORIGINS = [
-    origin.strip().rstrip("/")
-    for origin in os.getenv(
-        "FRONTEND_ORIGINS", DEFAULT_FRONTEND_ORIGIN
-    ).split(",")
-    if origin.strip()
-]
-OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini").strip()
-if not OPENAI_MODEL:
-    OPENAI_MODEL = "gpt-4o-mini"
+
+# =========================================================
+# FASTAPI APP SETUP
+# =========================================================
 
 app = FastAPI(
-    title="LeukemiaAI",
-    description="Leukemia prediction and educational chatbot",
-    version="1.0.0"
+    title="LeukemiaAI API",
+    description="Educational peripheral blood smear classification with OOD protection",
+    version="2.3.0",
 )
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=FRONTEND_ORIGINS,
+    allow_origins=["*"],
     allow_credentials=False,
-    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 
-model: tf.keras.Model | None = None
-_model_lock = threading.Lock()
+
+# =========================================================
+# MODEL LOADING
+# =========================================================
+
+model = None
+model_error: Optional[str] = None
 
 
-# ---------------- MODEL LOADING ----------------
+def load_model():
+    global model, model_error
 
-def get_model() -> tf.keras.Model:
-    global model
+    try:
+        if not MODEL_PATH.exists():
+            model_error = f"Model not found: {MODEL_PATH}"
+            print(model_error)
+            return
 
-    if model is None:
-        with _model_lock:
-            if model is not None:
-                return model
+        loaded_model = tf.keras.models.load_model(
+            str(MODEL_PATH),
+            compile=False
+        )
 
-            if not MODEL_PATH.is_file():
-                raise RuntimeError(
-                    f"Model file is unavailable at {MODEL_PATH}. "
-                    "Include the trained model in the deployment or set MODEL_PATH "
-                    "to its deployed location."
-                )
+        output_shape = loaded_model.output_shape
 
-            print("Loading LeukemiaAI model...")
+        if isinstance(output_shape, tuple):
+            output_count = output_shape[-1]
+        else:
+            output_count = None
 
-            try:
-                loaded_model = tf.keras.models.load_model(
-                    str(MODEL_PATH),
-                    compile=False
-                )
-            except Exception as error:
-                raise RuntimeError(
-                    f"Could not load model at {MODEL_PATH}: {error}"
-                ) from error
+        if output_count != len(CLASS_NAMES):
+            model_error = (
+                "Model output count does not match five classes. "
+                f"Expected {len(CLASS_NAMES)}, got {output_count}."
+            )
+            print(model_error)
+            return
 
-            if loaded_model.input_shape != (None, *IMAGE_SIZE, 3):
-                raise RuntimeError(
-                    f"Model input shape {loaded_model.input_shape} does not match "
-                    f"the required (None, {IMAGE_SIZE[0]}, {IMAGE_SIZE[1]}, 3)."
-                )
-            if loaded_model.output_shape != (None, len(CLASS_NAMES)):
-                raise RuntimeError(
-                    f"Model output shape {loaded_model.output_shape} does not match "
-                    f"the {len(CLASS_NAMES)} configured classes."
-                )
+        model = loaded_model
+        model_error = None
 
-            model = loaded_model
+        print("Leukemia classifier loaded successfully:", MODEL_PATH)
 
-            print("Model loaded successfully.")
-
-    return model
+    except Exception as exc:
+        model = None
+        model_error = f"{type(exc).__name__}: {exc}"
+        print("Model loading error:", model_error)
 
 
-def get_model_type(loaded_model: tf.keras.Model) -> str:
-    if any(isinstance(layer, tf.keras.layers.LSTM) for layer in loaded_model.layers):
-        return "CNN-LSTM hybrid"
-    return "CNN"
+load_model()
 
 
-# ---------------- HEALTH CHECK ----------------
+# =========================================================
+# REQUEST SCHEMAS
+# =========================================================
+
+class ChatRequest(BaseModel):
+    message: str
+
+
+# =========================================================
+# IMAGE PREPROCESSING
+# =========================================================
+
+def preprocess_image(image: Image.Image) -> np.ndarray:
+    image = image.convert("RGB")
+    image = image.resize((IMAGE_SIZE, IMAGE_SIZE))
+    image_array = np.asarray(image, dtype=np.float32)
+
+    # Note: If your saved model already contains a Rescaling layer, 
+    # raw values are handled inside the network.
+    return np.expand_dims(image_array, axis=0)
+
+
+# =========================================================
+# OFFLINE LEUKEMIAAI CHATBOT
+# =========================================================
+
+def get_chatbot_answer(message: str) -> str:
+    question = " ".join(message.lower().strip().split())
+
+    if not question:
+        return "Please enter a question."
+
+    if question in ["hi", "hello", "hey", "hii", "good morning", "good evening"]:
+        return """
+Hello! I am the offline LeukemiaAI educational chatbot.
+
+I can explain leukemia, blood smear images, the CNN-LSTM model,
+prediction scores, and your project workflow.
+
+I cannot diagnose a patient.
+"""
+
+    if any(term in question for term in ["pbs", "blood smear", "upload", "unrelated image", "other photo", "selfie", "reject", "certificate", "document"]):
+        return f"""
+LeukemiaAI is designed for peripheral blood smear (PBS) images.
+
+To filter out completely unrelated documents or certificates, 
+this version includes a Confidence Threshold ({CONFIDENCE_THRESHOLD}%). 
+
+If an uploaded image does not match proper blood cell features and 
+model certainty falls below {CONFIDENCE_THRESHOLD}%, it will be flagged as an 
+'Uncertain / Non-PBS Image'.
+
+Please upload a genuine peripheral blood smear image.
+"""
+
+    if any(term in question for term in ["cnn-lstm", "cnn lstm", "lstm", "cnn"]):
+        return """
+CNN stands for Convolutional Neural Network (learns visual patterns), and 
+LSTM stands for Long Short-Term Memory (recurrent component). 
+Together they handle sequential feature learning in blood cell images.
+"""
+
+    if any(term in question for term in ["symptom", "fever", "bruising", "tired"]):
+        return """
+Possible leukemia symptoms include persistent tiredness, fever, easy bruising, 
+bleeding, swollen lymph nodes, and recurrent infections. Consult a healthcare 
+professional for proper medical evaluation.
+"""
+
+    if any(term in question for term in ["type", "all", "aml", "cll", "cml"]):
+        return """
+The four primary leukemia types handled in this project are:
+1. ALL (Acute Lymphoblastic Leukemia)
+2. AML (Acute Myeloid Leukemia)
+3. CLL (Chronic Lymphocytic Leukemia)
+4. CML (Chronic Myeloid Leukemia)
+Plus the 'Normal & Reactive' class.
+"""
+
+    return """
+I am the offline LeukemiaAI educational chatbot. You can ask me about leukemia types, 
+CNN-LSTM architectures, confidence scores, or image validation thresholds.
+"""
+
+
+# =========================================================
+# HOME & HEALTH ENDPOINTS
+# =========================================================
 
 @app.get("/")
 def home():
     return {
-        "status": "running",
         "message": "LeukemiaAI API is running",
         "model_file": MODEL_PATH.name,
+        "chat_mode": "offline",
+        "confidence_threshold": CONFIDENCE_THRESHOLD,
+        "docs": "/docs",
     }
 
 
 @app.get("/health")
 def health():
-    try:
-        loaded_model = get_model()
-    except Exception as error:
-        print("Model health check failed:", repr(error))
-        return JSONResponse(
-            status_code=503,
-            content={
-                "status": "degraded",
-                "model_available": False,
-                "model_file": MODEL_PATH.name,
-                "error": str(error),
-            },
-        )
-
     return {
-        "status": "healthy",
-        "model_available": True,
+        "status": "healthy" if model is not None else "model_unavailable",
+        "model_available": model is not None,
         "model_file": MODEL_PATH.name,
-        "model_type": get_model_type(loaded_model),
-        "input_shape": list(loaded_model.input_shape),
-        "output_shape": list(loaded_model.output_shape),
+        "model_error": model_error,
+        "confidence_threshold": CONFIDENCE_THRESHOLD,
+        "chat_available": True,
     }
 
 
-# ---------------- PREDICTION ----------------
+# =========================================================
+# PREDICTION ENDPOINT
+# =========================================================
 
 @app.post("/predict")
-def predict(file: UploadFile = File(...)):
+async def predict(file: UploadFile = File(...)):
+
+    if file.content_type and not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=415, detail="Please upload an image file.")
+
+    image_bytes = await file.read(MAX_FILE_BYTES + 1)
+
+    if len(image_bytes) > MAX_FILE_BYTES:
+        raise HTTPException(status_code=413, detail="Image size must be 10 MB or less.")
+
+    if not image_bytes:
+        raise HTTPException(status_code=400, detail="The uploaded file is empty.")
 
     try:
-        image_bytes = file.file.read(MAX_IMAGE_BYTES + 1)
-        if not image_bytes:
-            raise HTTPException(
-                status_code=400,
-                detail="The uploaded image is empty."
-            )
-        if len(image_bytes) > MAX_IMAGE_BYTES:
-            raise HTTPException(
-                status_code=400,
-                detail="Image must be smaller than 10 MB."
-            )
+        image = Image.open(BytesIO(image_bytes))
+        image.verify()
+        image = Image.open(BytesIO(image_bytes)).convert("RGB")
+    except (UnidentifiedImageError, OSError, ValueError):
+        raise HTTPException(status_code=400, detail="Uploaded file is not a readable image.")
 
-        with Image.open(io.BytesIO(image_bytes)) as image:
-            if image.format not in {"JPEG", "PNG"}:
-                raise HTTPException(
-                    status_code=400,
-                    detail="Please upload a JPEG or PNG image."
-                )
-            width, height = image.size
-            if width <= 0 or height <= 0 or width * height > MAX_IMAGE_PIXELS:
-                raise HTTPException(
-                    status_code=400,
-                    detail="Image dimensions are too large to process."
-                )
-            image.verify()
-    except HTTPException:
-        raise
-    except (UnidentifiedImageError, Image.DecompressionBombError, OSError, ValueError):
-
-        raise HTTPException(
-            status_code=400,
-            detail="The uploaded file is not a valid JPEG or PNG image."
-        )
+    if model is None:
+        raise HTTPException(status_code=503, detail=f"Leukemia model unavailable: {model_error}")
 
     try:
-        decoded_image = tf.io.decode_image(
-            image_bytes,
-            channels=3,
-            expand_animations=False
-        )
-        resized_image = tf.image.resize(
-            decoded_image,
-            IMAGE_SIZE,
-            method="bilinear"
-        )
-        image_array = np.expand_dims(
-            np.asarray(resized_image, dtype=np.float32),
-            axis=0
-        )
-    except (tf.errors.InvalidArgumentError, ValueError) as error:
-        print("Image decoding error:", repr(error))
-        raise HTTPException(
-            status_code=400,
-            detail="The uploaded image could not be decoded."
-        )
+        processed_image = preprocess_image(image)
+        scores = np.asarray(model.predict(processed_image, verbose=0)).reshape(-1)
 
-    try:
-        loaded_model = get_model()
-        predictions = np.asarray(
-            loaded_model.predict(image_array, verbose=0)[0],
-            dtype=np.float32
-        )
-    except RuntimeError as error:
-        print("Model unavailable:", repr(error))
-        raise HTTPException(status_code=503, detail=str(error))
-    except Exception as error:
-        print("Prediction error:", repr(error))
-        raise HTTPException(
-            status_code=500,
-            detail="The prediction model could not process this image. "
-            "Check the server logs for details."
-        )
+        if scores.size != len(CLASS_NAMES):
+            raise ValueError(f"Model returned {scores.size} scores; expected {len(CLASS_NAMES)}.")
 
-    if (
-        predictions.shape != (len(CLASS_NAMES),)
-        or not np.all(np.isfinite(predictions))
-        or np.any(predictions < 0)
-        or np.any(predictions > 1)
-        or not np.isclose(float(np.sum(predictions)), 1.0, atol=1e-3)
-    ):
-        raise HTTPException(
-            status_code=500,
-            detail="The model returned invalid class probabilities."
-        )
+        if not np.all(np.isfinite(scores)):
+            raise ValueError("Model returned invalid numerical values.")
 
-    predicted_index = int(np.argmax(predictions))
-    predicted_class = CLASS_NAMES[predicted_index]
-    confidence = float(predictions[predicted_index] * 100)
-    is_normal = predicted_class == "Normal & Reactive"
-    result = "Normal & Reactive" if is_normal else "Leukemia Detected"
+        # Convert raw scores to probabilities using softmax if needed
+        if np.any(scores < 0) or not np.isclose(float(np.sum(scores)), 1.0, atol=0.05):
+            shifted_scores = scores - np.max(scores)
+            exp_values = np.exp(shifted_scores)
+            scores = exp_values / np.sum(exp_values)
+        else:
+            scores = scores / max(float(np.sum(scores)), 1e-8)
 
-    class_probabilities = {
-        CLASS_NAMES[index]: round(float(predictions[index] * 100), 2)
-        for index in range(len(CLASS_NAMES))
-    }
+        best_index = int(np.argmax(scores))
+        confidence = round(float(scores[best_index]) * 100, 2)
 
-    return {
-        "success": True,
-        "predicted_class": predicted_class,
-        "result": result,
-        "is_normal": is_normal,
-        "confidence": round(confidence, 2),
-        "class_probabilities": class_probabilities,
-        "message": (
-            "The model predicted the Normal & Reactive class."
-            if is_normal
-            else "The model predicted a leukemia-related class."
-        ),
-        "disclaimer": (
-            "Educational AI prediction only. "
-            "This result is not a medical diagnosis. "
-            "Only peripheral blood smear images are within scope; "
-            "other images may be misclassified."
-        )
-    }
+        class_probabilities = {
+            CLASS_NAMES[index]: round(float(scores[index]) * 100, 2)
+            for index in range(len(CLASS_NAMES))
+        }
 
-
-# ---------------- CHATBOT ----------------
-
-class ChatMessage(BaseModel):
-    role: Literal["user", "assistant"]
-    content: str = Field(min_length=1, max_length=4000)
-
-
-class ChatRequest(BaseModel):
-    message: str = Field(min_length=1, max_length=4000)
-    history: list[ChatMessage] = Field(default_factory=list)
-
-
-@app.post("/chat")
-def chat(request: ChatRequest):
-    user_message = request.message.strip()
-
-    if not user_message:
-        raise HTTPException(
-            status_code=400,
-            detail="Please enter a question."
-        )
-
-    api_key = os.getenv("OPENAI_API_KEY", "").strip()
-    if not api_key:
-        fallback = get_educational_fallback(user_message, request.history)
-        if fallback:
+        # --- OUT-OF-DISTRIBUTION (OOD) / REJECTION CHECK ---
+        if confidence < CONFIDENCE_THRESHOLD:
             return {
                 "success": True,
-                "mode": "educational_fallback",
-                "answer": fallback,
+                "predicted_class": "Uncertain / Non-PBS Image",
+                "result": "Uncertain / Non-PBS Image",
+                "confidence": confidence,
+                "class_probabilities": class_probabilities,
+                "pbs_validation": {
+                    "performed": True,
+                    "note": f"Confidence ({confidence}%) is below the acceptance threshold ({CONFIDENCE_THRESHOLD}%). Image rejected as potential non-PBS/unrelated document."
+                },
+                "disclaimer": "Warning: Model confidence is too low or the uploaded image does not appear to be a valid Peripheral Blood Smear. Please upload a clear blood cell slide."
             }
-        raise HTTPException(
-            status_code=503,
-            detail=(
-                "The OpenAI chatbot is not configured (OPENAI_API_KEY is missing), "
-                "and the offline educational fallback does not cover this question."
-            ),
-        )
-
-    try:
-        client = OpenAI(api_key=api_key, timeout=45.0, max_retries=0)
-
-        messages = [
-            {
-                "role": "system",
-                "content": """
-You are LeukemiaAI Assistant.
-
-You are a conversational educational assistant for leukemia, blood-cell
-health, and this project's image-classification workflow. Answer the
-question actually asked in clear, simple English. You are not limited to
-the listed examples or a fixed FAQ.
-
-You can answer questions about:
-
-1. Leukemia meaning and overview
-2. ALL, AML, CLL and CML
-3. Symptoms and warning signs
-4. General risk factors and possible causes
-5. Blood tests and diagnostic procedures
-6. Treatment approaches
-7. Chemotherapy, targeted therapy and immunotherapy
-8. General side effects and patient support
-9. Differences between normal and leukemia blood cells
-10. General awareness and educational questions
-
-Instructions:
-
-- Answer the user's actual question.
-- Understand misspellings, shorthand, incomplete questions, and common
-  conversational wording. If the intent is reasonably clear, answer it;
-  ask one brief clarifying question only when necessary.
-- Answer general educational questions even when they are not listed above.
-- Give detailed answers when requested.
-- Use headings and bullet points where helpful.
-- Understand follow-up questions using conversation history.
-- Explain medical terms in simple language.
-- Explain that a model's class probability is not a validated clinical
-  confidence or proof of a diagnosis. Do not invent this project's
-  validation accuracy or claim the model is reliable.
-- Do not diagnose the user.
-- Do not prescribe medicines or dosages.
-- Do not claim that symptoms alone confirm leukemia.
-- Encourage consultation with a qualified hematologist
-  for personal medical concerns.
-- For urgent or severe symptoms, advise seeking medical care.
-
-This chatbot provides educational information only.
-"""
-            }
-        ]
-
-        # Keep only the latest 12 conversation messages.
-
-        for item in request.history[-12:]:
-
-            messages.append({
-                "role": item.role,
-                "content": item.content
-            })
-
-        messages.append({
-            "role": "user",
-            "content": user_message
-        })
-
-        response = client.chat.completions.create(
-            model=OPENAI_MODEL,
-            messages=messages,
-            temperature=0.4,
-            max_tokens=1000
-        )
-
-        answer = response.choices[0].message.content
-        if not answer:
-            raise HTTPException(
-                status_code=502,
-                detail="The chatbot returned an empty response. Please try again."
-            )
 
         return {
             "success": True,
-            "answer": answer
+            "predicted_class": CLASS_NAMES[best_index],
+            "result": CLASS_NAMES[best_index],
+            "confidence": confidence,
+            "class_probabilities": class_probabilities,
+            "pbs_validation": {
+                "performed": True,
+                "note": "Passed confidence threshold check."
+            },
+            "disclaimer": "Educational prototype only. This is not a medical diagnosis. Consult a qualified healthcare professional."
         }
 
     except HTTPException:
         raise
-
-    except APITimeoutError as error:
-        print("Chatbot provider timeout:", repr(error))
-        fallback = get_educational_fallback(user_message, request.history)
-        if fallback:
-            return {
-                "success": True,
-                "mode": "educational_fallback",
-                "answer": fallback,
-            }
-        raise HTTPException(
-            status_code=504,
-            detail="The chatbot provider timed out. Please try again."
-        )
-
-    except OpenAIError as error:
-        print("Chatbot provider error:", repr(error))
-        fallback = get_educational_fallback(user_message, request.history)
-        if fallback:
-            return {
-                "success": True,
-                "mode": "educational_fallback",
-                "answer": fallback,
-            }
-        raise HTTPException(
-            status_code=502,
-            detail="The chatbot service is temporarily unavailable. Please try again."
-        )
-
-    except Exception as error:
-        print("Chatbot error:", repr(error))
-        raise HTTPException(
-            status_code=500,
-            detail="The chatbot could not answer this question. Please try again."
-        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Prediction failed: {type(exc).__name__}: {exc}")
 
 
-def get_educational_fallback(
-    message: str,
-    history: list[ChatMessage],
-) -> str | None:
-    """Return a clearly labeled, limited offline answer for supported topics."""
-    question = message.casefold()
-    if any(term in question for term in ("symptom", "warning sign", "signs of")):
-        return (
-            "Leukemia can cause fatigue, fever or frequent infections, easy bruising "
-            "or bleeding, and sometimes bone pain. These symptoms can have many "
-            "causes and cannot confirm leukemia. A healthcare professional can "
-            "evaluate personal concerns."
-        )
-    if re.search(r"\ball\b", question) and re.search(r"\baml\b", question):
-        return (
-            "ALL (acute lymphoblastic leukemia) affects immature lymphoid cells; "
-            "AML (acute myeloid leukemia) affects immature myeloid cells. Both are "
-            "acute leukemias, but they are distinct diseases diagnosed using "
-            "professional laboratory testing."
-        )
-    if re.search(r"\b(all|aml|cll|cml)\b", question):
-        type_information = {
-            "all": "ALL means acute lymphoblastic leukemia, which affects immature lymphoid cells.",
-            "aml": "AML means acute myeloid leukemia, which affects immature myeloid cells.",
-            "cll": "CLL means chronic lymphocytic leukemia, which involves more mature lymphocytes.",
-            "cml": "CML means chronic myeloid leukemia, which involves myeloid cells and is often associated with the BCR-ABL1 change.",
-        }
-        matched_types = [
-            type_information[name]
-            for name in ("all", "aml", "cll", "cml")
-            if re.search(rf"\b{name}\b", question)
-        ]
-        return " ".join(matched_types) + (
-            " These are educational descriptions, not a diagnosis."
-        )
-    if any(term in question for term in ("blood test", "diagnos", "detect", "cbc", "test")):
-        return (
-            "Evaluation may include a complete blood count (CBC), examination of a "
-            "blood smear, and, when indicated, bone-marrow and specialized laboratory "
-            "tests. A qualified clinician interprets these results; this chatbot and "
-            "the image model cannot diagnose leukemia."
-        )
-    if any(term in question for term in ("treatment", "chemotherapy", "immunotherapy", "therapy")):
-        return (
-            "Leukemia treatment depends on its specific type and individual clinical "
-            "factors. Care may involve chemotherapy, targeted therapy, immunotherapy, "
-            "stem-cell transplant, or monitoring in some situations. Treatment "
-            "decisions belong with a qualified oncology team."
-        )
-    if any(term in question for term in ("confidence", "probability score", "score mean")):
-        return (
-            "The displayed score is the model's probability-like output for a class. "
-            "It is not a clinically validated confidence, does not measure the "
-            "chance that a person has leukemia, and is not a diagnosis."
-        )
-    if any(term in question for term in ("project", "workflow", "blood smear image", "analyze an image")):
-        return (
-            "The project resizes an uploaded RGB image to 128 × 128, then sends it "
-            "to the trained CNN-LSTM model. The model produces scores for its five "
-            "trained classes. This experimental result is not a medical diagnosis."
-        )
-    if any(term in question for term in ("cnn-lstm", "cnn lstm", "lstm")):
-        return (
-            "A CNN learns visual features from an image. An LSTM processes those "
-            "features as a sequence. In a CNN-LSTM hybrid, the CNN extracts image "
-            "patterns and the LSTM uses their sequence to produce a classification."
-        )
-    if "cnn" in question or "convolutional neural network" in question:
-        return (
-            "A convolutional neural network (CNN) is a type of model that learns "
-            "visual patterns such as edges and shapes from images."
-        )
-    if any(term in question for term in ("acute", "chronic", "leukemia types", "types of leukemia")):
-        return (
-            "The four major types represented in this project are ALL, AML, CLL, "
-            "and CML. ALL and AML are acute forms; CLL and CML are chronic forms. "
-            "They differ in the blood-cell lineage involved and require clinical "
-            "testing to distinguish."
-        )
-    if "leukemia" in question or "blood cell" in question:
-        return (
-            "Leukemia is a group of cancers that begin in blood-forming tissues and "
-            "affect the production or function of blood cells. Only qualified "
-            "healthcare professionals can assess an individual's health."
-        )
-    latest_user_message = next(
-        (item.content for item in reversed(history) if item.role == "user"),
-        None,
-    )
-    if latest_user_message:
-        return get_educational_fallback(latest_user_message, [])
-    return None
+# =========================================================
+# CHAT ENDPOINT
+# =========================================================
+
+@app.post("/chat")
+async def chat(request: ChatRequest):
+    message = request.message.strip()
+    if not message:
+        raise HTTPException(status_code=400, detail="Message cannot be empty.")
+
+    return {
+        "success": True,
+        "mode": "offline",
+        "reply": get_chatbot_answer(message),
+    }
